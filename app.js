@@ -44,15 +44,9 @@ http.createServer(app).listen(app.get('port'), function(){
 });
 
 // Connect to cloud database
-var db = new DB(null, null, '@localhost/Cubbyhole', true),
-	user = new User({ mail: 'zzz', password: 'aze' });
+var db = new DB(null, null, '@localhost/Cubbyhole', true);
 	db.connect( function (err) {
-		if (err) throw err;
-		
-		user.save( function (err) {
-			if (err) throw err;
-			console.log(user);
-		})
+
 	});
 	
 /**

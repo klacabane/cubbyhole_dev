@@ -7,59 +7,30 @@ var DB = require('../tools/DB'),
 	async = require('async');
 
 var db = new DB(null, null, '@localhost/Cubbyhole', true);
-var newuser = { mail: 'testnewmail', password: 'testnewpassword' };
 
 module.exports = {
 	setUp: function (callback) {
-		db.connect( function (err) {
-			db.dropDatabase( function () {
-				var user = new User({ mail: 'testmail', password: 'testpassword' });
-				var up = new UserPlan({ user: user._id, plan: 0, active: true });
-				user.currentPlan = up._id;
-				async.parallel([
-					function (cb) {
-						user.save(cb);
-					},
-					function (cb) {
-						up.save(cb);	
-					}],
-				callback);
-			});
+		db.connect( function () {
+			db.dropDatabase(callback);
 		});
 	},
 	tearDown: function (callback) {
 		db.disconnect(callback);
 	},
-	addTest: function (test) {
-		// test new user
-		User.add(newuser, function (err, created, user) {
-			test.ok(created);
-			test.equal('testnewmail', user.mail, 'should be testnewname');
-			test.equal('testnewpassword', user.password, 'should be testnewpassword');
-			UserPlan.find({}, function (err, userplans) {
-				test.equal(2, userplans.length);
-				test.ok(user._id.equals(userplans[1].user));
-				
-				// tests mail taken
-				User.add({ mail: 'testmail' }, function (e, ncreated, nuser) {
-					test.strictEqual(false, ncreated);
-					test.equal(null, nuser);
-					test.done();
-				});
-			});
-		});
-	},
-	updateInfosTest: function (test) {
-		User.findOne({ mail: 'testmail' }, function (err, user) {
-			user.updateInfos({ mail: 'zzz' }, function (err, updated) {
-				test.ok(updated);
-				test.equal('zzz', user.mail);
+	saveMiddlewareTest: function (test) {
+		var user = new User({ mail: 'testmail', password: 'testpassword' });
+		user.save( function (err) {
+			test.ok(user.currentPlan);
+			UserPlan.find({}, function (error, userplans) {
+				test.equal(1, userplans.length);
+				test.ok(user._id.equals(userplans[0].user));
 				test.done();
 			});
 		});
 	},
 	updatePlanTest: function (test) {
-		User.findOne({ mail: 'testmail' }, function (err, user) {
+		var user = new User({ mail: 'testmail', password: 'testpassword' });
+		user.save( function (err) {
 			var oldPlanId = user.currentPlan;
 			user.updatePlan(3, function (err) {
 				test.ok(oldPlanId != user.currentPlan);

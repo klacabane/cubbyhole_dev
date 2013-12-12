@@ -8,18 +8,4 @@ var userPlanSchema = new mongoose.Schema({
 	active: { type: Boolean, default: true }
 });
 
-/*
- * [ Statics ]
- */
-
-/*
- * [ Methods ]
- */
-	// setInactive
-	userPlanSchema.methods.setInactive = function (callback) {
-		this.update({ active: false }, function (err) {
-			if (err) callback(err);
-			callback();
-		});
-	};
 module.exports = mongoose.model('UserPlan', userPlanSchema);
