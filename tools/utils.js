@@ -1,7 +1,9 @@
 var	jwt = require('jwt-simple'),
 	cfg = require('../config'),
 	async = require('async'),
-	fs = require('fs');
+	fs = require('fs'),
+	Plan = require('../models/Plan'),
+	Bandwidth = require('../models/Bandwidth');
 
 var Utils = {
 	/* Token */
@@ -69,6 +71,33 @@ var Utils = {
 					}
 				});
 			}
+		});
+	},
+	/* DB */
+	insertPlanAndBw: function (callback) {
+		fs.readFile('./datas/planAndBw.json', function (err, data) {
+			data = JSON.parse(data);
+
+			Plan.removeAll( function (err) {
+				if (err) return callback(err);
+				var bwCount = data.bandwidths.length,
+					planCount = data.plans.length;
+				data.bandwidths.forEach( function (bwArgs) {
+					var bw = new Bandwidth(bwArgs);
+					bw.save( function (err) {
+						if (err) return callback(err);
+						if (--bwCount == 0)
+							data.plans.forEach( function (planArgs) {
+								var plan = new Plan(planArgs);
+								plan.save( function (err) {
+									if (err) return callback(err);
+									if (--planCount == 0)
+										callback();
+								});
+							});
+					});
+				});
+			});
 		});
 	}
 };

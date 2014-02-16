@@ -39,6 +39,9 @@ if ('development' == app.get('env')) {
 // Open database connection
 mongoose.connect(cfg.db.address, function (err) {
 	if (err) throw err;
+	Utils.insertPlanAndBw(function (err) {
+		if (err) throw err;
+	});
 });
 
 // fake storage folder
