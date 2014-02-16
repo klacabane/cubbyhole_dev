@@ -5,7 +5,7 @@ module.exports = function (app) {
 	// POST
 
 	// GET
-	app.get('/plan/:id', mw.validateId, function (req, res) {
+	app.get('/plan/:id', function (req, res) {
 		Plan.findOne({ _id: id }, function (err, plan) {
 			if (err) return res.send(500);
 			if (!plan)
