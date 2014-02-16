@@ -8,6 +8,10 @@ module.exports = {
 			
 			req.user = Utils.getTokenUser(token);
 		}
+
+		res.header("Access-Control-Allow-Origin", "*");
+		res.header("Access-Control-Allow-Headers", "X-Requested-With");
+
 		next();
 	},
 	validateId: function (req, res, next) {
