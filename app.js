@@ -50,6 +50,15 @@ http.createServer(app).listen(app.get('port'), function(){
   console.log('Express server listening on port ' + app.get('port'));
 });
 
+<<<<<<< HEAD
+=======
+// Connect to cloud database
+var db = new DB(null, null, '@localhost/Cubbyhole', true);
+	db.connect( function (err) {
+
+	});
+	
+>>>>>>> 044a5d695f6f8760bd50dd5650fdc7668d522f7b
 /**
  * Routes
  */
