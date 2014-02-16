@@ -16,7 +16,6 @@ var userSchema = new mongoose.Schema({
 /*
  * 	[ Middlewares ]
  */
-<<<<<<< HEAD
  	// create a free userPlan and mkdir if new user & hash pw on update/insert
  	userSchema.pre('save', function (next) {
  		var that = this;
@@ -41,18 +40,6 @@ var userSchema = new mongoose.Schema({
  					fs.mkdir(cfg.storage.dir + '/' + that._id, cb);
  				}], next);
  		}
-=======
- 	// creates a free userPlan if new user
- 	userSchema.pre('save', function (next) {
- 		if (!this.isNew) return next();
-
- 		var that = this;
-		UserPlan.create({ user: that._id, plan: 0 }, function (err, up) {
-			if (err) return next(err);
-			that.currentPlan = up._id;
-			next();
-		});
->>>>>>> 044a5d695f6f8760bd50dd5650fdc7668d522f7b
  	});
 
 /*
@@ -74,7 +61,6 @@ var userSchema = new mongoose.Schema({
 				if (err) return callback(err);
 				that.currentPlan = results[0]._id;
 				that.save(callback);
-<<<<<<< HEAD
 		});
 	};
 
@@ -93,8 +79,6 @@ var userSchema = new mongoose.Schema({
 		bcrypt.compare(pw, this.password, function (err, match) {
 			if (err) return cb(err);
 			cb(null, match);
-=======
->>>>>>> 044a5d695f6f8760bd50dd5650fdc7668d522f7b
 		});
 	};
 
