@@ -14,8 +14,7 @@ var DB = function (username, password, address, local) {
 	this._username = username;
 	this._password = password;
 	this._address = address;
-	this._local = local;
-	this._url = (this._local) ? 'mongodb://' + this._address : 'mongodb://' + this._username + ':' + this._password + this._address;
+	this._url = (local) ? 'mongodb://' + this._address : 'mongodb://' + this._username + ':' + this._password + this._address;
 };
 
 // connect

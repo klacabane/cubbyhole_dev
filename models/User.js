@@ -1,6 +1,9 @@
 var mongoose = require('mongoose'),
 	UserPlan = require('../models/UserPlan'),
-	async = require('async');
+	cfg = require('../config'),
+	async = require('async'),
+	bcrypt = require('bcrypt'),
+	fs = require('fs');
 
 /* Properties */
 var userSchema = new mongoose.Schema({
@@ -9,105 +12,73 @@ var userSchema = new mongoose.Schema({
 	registrationDate: { type: Date, default: Date.now },
 	currentPlan: { type: mongoose.Schema.Types.ObjectId, ref: 'UserPlan' }
 });
-	
-/*
- * 	[ Middleware ]
- */
- 	userSchema.pre('save', function (next) {
- 		if (this.isModified('password')) {
-	 		// hash pw
-	 	}
- 	});
-/*
-*	[ Statics ]
-*/
-	// add
-	// persist user with free plan
-	// @param args: { mail: string, password: string }
-	// callback(error, success, user)
-	// success @false: mail taken, @true: account created
-	// TODO: hash password
-	userSchema.methods.add = function (callback) {
-		var self = this;
-		this.model('User').findOne({ mail: self.mail }, function (err, u) {
-			if (err) callback(err);
 
-			if (u != null) {
-				callback(null, false);
-			} else {
-				var userPlan = new UserPlan({ user: self._id, plan: 0, active: true });
-				self.currentPlan = userPlan._id;
-				async.parallel([
-					function (cb) {
-						self.save(cb);
-					},
-					function (cb) {
-						userPlan.save(cb);	
-					}],
-					function (err) {
-						if (err) callback(err);
-						self.populate('currentPlan', function (err) {
-							if (err) callback(err);
-							callback(null, true);
-						});
-				});
-			}
-		});	
-	};
-	
 /*
- * [ Methods ]
+ * 	[ Middlewares ]
  */
-	// updateInfos
-	// @param args: { mail: string } | { password: string }
-	// callback(error, success)
-	// success @false: mail taken, @true: account updated
-	// TODO: hash new password
-	userSchema.methods.updateInfos = function (newParam, callback) {
-		var self = this;
-		if (newParam.hasOwnProperty('password')) {
-			this.password = newParam.password;
-			this.save( function (err) {
-				if (err) callback(err);
-				callback(null, true);
-			});
-		} else if (newParam.hasOwnProperty('mail')) {
-			this.model('User').findOne(newParam, function (err, user) {
-				if (err) callback(err);
-				if (user != null) {
-					callback(null, false);
-				} else {
-					self.mail = newParam.mail;
-					self.save( function (err) {
-						if (err) callback(err);
-						callback(null, true);
+ 	// create a free userPlan and mkdir if new user & hash pw on update/insert
+ 	userSchema.pre('save', function (next) {
+ 		var that = this;
+ 		if (!this.isNew) {
+ 			if (!this.isModified('password'))
+ 				next();
+ 			else
+ 				this.hashPw(next);
+ 		} else {
+	 		async.parallel([
+ 				function (cb) {
+ 					UserPlan.create({ user: that._id, plan: 0 }, function (err, up) {
+						if (err) return cb(err);
+						that.currentPlan = up._id;
+						cb();
 					});
-				}
-			});
-		}
-	};
-	
+ 				},
+ 				function (cb) {
+ 					that.hashPw(cb);
+ 				},
+ 				function (cb) {
+ 					fs.mkdir(cfg.storage.dir + '/' + that._id, cb);
+ 				}], next);
+ 		}
+ 	});
+
+/*
+*	[ Methods ]
+*/	
 	// updatePlan
 	// @param planId: number
-	// callback(error)
 	userSchema.methods.updatePlan = function (planId, callback) {
-		var self = this;
-		var userPlan = new UserPlan({ user: self._id, plan: planId, active: true });
+		var that = this;
 		
 		async.parallel([
 			function (cb) {
-				userPlan.save(cb);
+				UserPlan.create({ user: that._id, plan: planId }, cb);
 			},
 			function (cb) {
-				UserPlan.findByIdAndUpdate(self.currentPlan, { active: false }, cb);
+				UserPlan.findByIdAndUpdate(that.currentPlan, { active: false }, cb);
 			}],
-			function (err) {
-				if (err) callback(err);
-				self.currentPlan = userPlan._id;
-				self.save( function (err) {
-					if (err) callback(err);
-					callback();
-				});
+			function (err, results) {
+				if (err) return callback(err);
+				that.currentPlan = results[0]._id;
+				that.save(callback);
+		});
+	};
+
+	// hashPw
+	userSchema.methods.hashPw = function (callback) {
+		var that = this;
+		bcrypt.hash(this.password, 12, function (err, hash) {
+			if (err) return callback(err);
+			that.password = hash;
+			callback();
+		});
+	};
+
+	// comparePw
+	userSchema.methods.comparePw = function (pw, cb) {
+		bcrypt.compare(pw, this.password, function (err, match) {
+			if (err) return cb(err);
+			cb(null, match);
 		});
 	};
 

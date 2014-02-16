@@ -1,20 +1,49 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <title>CubbyHole</title>
-        <link rel="stylesheet" href="src/stylesheets/style.css">
+        <title>CubbyHole API</title>
     </head>
 
-    <body id="ng-app" ng-app="webApp">
+    <body>
 
-        <ng-view></ng-view>
-
-        <script src="src/lib/angular/angular.min.js"></script>
-        <script src="src/lib/angular/angular-animate.min.js"></script>
-        <script src="src/lib/angular/angular-resource.min.js"></script>
-        <script src="src/lib/angular/angular-route.min.js"></script>
-        <script src="src/lib/angular/angular-sanitize.min.js"></script>
-        <script src="src/app.js"></script>
-        <script src="src/home/home.js"></script>
+        <script src="http://code.jquery.com/jquery-1.10.2.min.js"></script>
+        <script>
+            // $.ajax({
+            //     url: '/auth/signin',
+            //     type: 'POST',
+            //     contentType: 'application/json',
+            //     data: JSON.stringify({ email: 'w', pass: 'wop' }),
+            //     success: function (res) {
+            //         $.ajax({
+            //             url: '/item',
+            //             type: 'GET',
+            //             headers: {
+            //                 'X-Cub-AuthToken': res.profile.token
+            //             },
+            //             success: function (folders) {
+            //                 // tree @folders.data
+            //                 $.ajax({
+            //                     url: '/item/',
+            //                     type: 'POST',
+            //                     headers: {
+            //                         'X-Cub-AuthToken': res.profile.token
+            //                     },
+            //                     contentType: 'application/json',
+            //                     data: JSON.stringify({ name: 'random', type: 'folder' }),
+            //                     success: function (newitem) {
+            //                         console.log(newitem);
+            //                     }, error: function (err) {
+            //                         console.log(err);
+            //                     }
+            //                 });
+            //             }, error: function (err) {
+            //                 console.log(err);
+            //             }
+            //         });
+            //     }, error: function (err) {
+            //         console.log(err);
+            //     }
+            // });
+        </script>
     </body>
 </html>

@@ -9,6 +9,10 @@
     "express": "3.4.4",
     "ejs": "*",
     "async": "*",
-    "mongoose": "*"
+    "mongoose": "*",
+    "bcrypt": "*",
+    "q": "*",
+    "mongoose-path-tree": "*",
+    "jwt-simple": "*"
   }
 }
