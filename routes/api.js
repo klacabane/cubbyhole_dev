@@ -17,33 +17,23 @@ module.exports = function (app) {
 
     	User.findOne({ mail: email }, function (err, user) {
 			if (err) return res.send(500);
-			if (!user) {
-				res.send({
-					success: false,
-					error: 'Auth failed.'
-				});
-			} else {
-				user.comparePw(pw, function (err, match) {
-					if (err) return res.send(500);
-					if (!match) {
-						res.send({
-							success: false,
-							error: 'Auth failed.'
-						});
-					} else {
-						var t = Utils.generateToken(user, rememberMe);
-						res.send(200, {
-							success: true,
-							profile: {
-								id: user._id,
-								email: user.mail,
-								plan: user.currentPlan,
-								token: t
-							}
-						});
+			if (!user) return res.send({success: false, error: 'Auth failed.' });
+
+			user.comparePw(pw, function (err, match) {
+				if (err) return res.send(500);
+				if (!match) return res.send({success: false, error: 'Auth failed.' });
+
+				var t = Utils.generateToken(user, rememberMe);
+				res.send(200, {
+					success: true,
+					profile: {
+						id: user._id,
+						email: user.mail,
+						plan: user.currentPlan,
+						token: t
 					}
 				});
-			}
+			});
 		});
     });
 

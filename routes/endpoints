@@ -1,0 +1,16 @@
+POST	/auth/signin	@body email, pw, rememberMe
+POST	/auth/signup	@body email, pw
+
+with Header X-Cub-AuthToken
+POST	/item			@body 
+							name
+							type: 'file' | 'folder'
+							- optional
+							parent: Parent _id
+GET		/item/:id
+GET		/item
+DELETE	/item/:id
+
+GET 	/user/:id
+
+GET 	/plan/:id

@@ -8,13 +8,12 @@ module.exports = function (app) {
 	app.get('/plan/:id', function (req, res) {
 		Plan.findOne({ _id: id }, function (err, plan) {
 			if (err) return res.send(500);
-			if (!plan)
-				res.send(404);
-			else
-				res.send(200, {
-					success: true,
-					result: plan
-				});
+			if (!plan) return res.send(404);
+			
+			res.send(200, {
+				success: true,
+				result: plan
+			});
 		});
 	});
 
