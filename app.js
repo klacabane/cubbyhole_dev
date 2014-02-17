@@ -58,6 +58,12 @@ http.createServer(app).listen(app.get('port'), function(){
  */
 app.get('/', routes.index);
 
+app.options('*', function(req, res) {
+	return res.send(200, {
+		success: true
+	});
+});
+
 /**
  * JSON API
  */

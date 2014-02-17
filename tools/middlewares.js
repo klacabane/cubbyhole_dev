@@ -2,7 +2,7 @@ var Utils = require('../tools/utils');
 
 module.exports = {
 	checkAuth: function (req, res, next) {
-		if (req.path != '/' && req.path != '/auth/signin' && req.path != '/auth/signup') {
+		if (req.path != '/' && req.path != '/auth/signin' && req.path != '/auth/signup' && req.method != 'OPTIONS') {
 			var token = req.get('X-Cub-AuthToken');
 			if (token === undefined || !Utils.isTokenValid(token)) return res.send(401);
 			
@@ -10,7 +10,7 @@ module.exports = {
 		}
 
 		res.header("Access-Control-Allow-Origin", "*");
-		res.header("Access-Control-Allow-Headers", "X-Requested-With");
+		res.header("Access-Control-Allow-Headers", "X-Requested-With, X-Cub-AuthToken");
 
 		next();
 	},
