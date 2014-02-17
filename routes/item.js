@@ -100,7 +100,7 @@ module.exports = function (app) {
 				}
 				res.json({
 					success: true,
-					data: rootDir
+					data: [rootDir]
 				});
 			});
 		});
