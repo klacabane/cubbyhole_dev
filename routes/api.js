@@ -17,11 +17,11 @@ module.exports = function (app) {
 
     	User.findOne({ mail: email }, function (err, user) {
 			if (err) return res.send(500);
-			if (!user) return res.send(400, {success: false, error: 'Auth failed.' });
+			if (!user) return res.send(404);
 
 			user.comparePw(pw, function (err, match) {
 				if (err) return res.send(500);
-				if (!match) return res.send(400, {success: false, error: 'Auth failed.' });
+				if (!match) return res.send(404);
 
 				var t = Utils.generateToken(user, rememberMe);
 				res.send(200, {
@@ -46,15 +46,13 @@ module.exports = function (app) {
 
 		User.findOne({ mail: email }, function (err, user) {
 			if (err) return res.send(500);
-			if (user) return res.send(400, {success: false, error: 'Email taken.'});
+			if (user) return res.send(422);
 			
 			new User({ mail: email, password: pw })
 				.save( function (err) {
 					if (err) return res.send(500);
 					
-					res.send(201, {
-						success: true
-					});
+					res.send(201);
 				});
 		});
     });
