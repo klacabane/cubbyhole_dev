@@ -10,7 +10,7 @@ module.exports = {
 		}
 
 		res.header("Access-Control-Allow-Origin", "*");
-		res.header("Access-Control-Allow-Headers", "X-Requested-With, X-Cub-AuthToken");
+		res.header("Access-Control-Allow-Headers", "X-Requested-With, X-Cub-AuthToken, Content-Type");
 
 		next();
 	},
