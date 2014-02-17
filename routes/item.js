@@ -15,11 +15,11 @@ module.exports = function (app) {
 			name;
 
 		if (type != 'folder' && type != 'file')
-			return res.send({success: false, error: 'Invalid type.'});
+			return res.send(400);
 
 		Item.parentExists(parent, function (err, exists) {
 			if (err) return res.send(500);
-			if (!exists) return res.send({success: false, error: 'Invalid Parent.'})
+			if (!exists) return res.send(422);
 
 			if (type == 'folder') {
 				name = req.body.name;
@@ -38,12 +38,10 @@ module.exports = function (app) {
 				newItem.save(function (err) {
 					if (err)
 						return res.send(500, {
-							success: false,
 							error: 'Error creating ' + newItem.type + '.'
 						});
 					// OK
 					return res.send(201, {
-						success: true,
 						data: {
 							_id: newItem._id,
 							name: newItem.name,
@@ -66,7 +64,6 @@ module.exports = function (app) {
 			if (!item) return res.send(404);
 
 			res.send(200, {
-				success: true,
 				data: item
 			});
 		});
@@ -122,9 +119,7 @@ module.exports = function (app) {
 				item.remove(function (err) {
 					if (err) return res.send(500);
 
-					res.send(200, {
-						success: true
-					});
+					res.send(200);
 				});
 			});
 		});

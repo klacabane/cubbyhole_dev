@@ -25,7 +25,6 @@ module.exports = function (app) {
 
 				var t = Utils.generateToken(user, rememberMe);
 				res.send(200, {
-					success: true,
 					profile: {
 						id: user._id,
 						email: user.mail,
