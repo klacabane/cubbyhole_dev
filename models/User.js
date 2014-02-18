@@ -10,7 +10,8 @@ var userSchema = new mongoose.Schema({
 	mail: String,
 	password: String,
 	registrationDate: { type: Date, default: Date.now },
-	currentPlan: { type: mongoose.Schema.Types.ObjectId, ref: 'UserPlan' }
+	currentPlan: { type: mongoose.Schema.Types.ObjectId, ref: 'UserPlan' },
+	verified: Boolean
 });
 
 /*

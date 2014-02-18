@@ -2,6 +2,7 @@ var	jwt = require('jwt-simple'),
 	cfg = require('../config'),
 	async = require('async'),
 	fs = require('fs'),
+	nodemailer = require('nodemailer'),
 	Plan = require('../models/Plan'),
 	Bandwidth = require('../models/Bandwidth');
 
@@ -28,7 +29,7 @@ var Utils = {
 			return false;
 		}
 
-		if (u.exp < Date.now())
+		if (u.exp && u.exp < Date.now())
 			return false;
 
 		return true;
@@ -98,6 +99,35 @@ var Utils = {
 					});
 				});
 			});
+		});
+	},
+	/* */
+	sendConfirmationEmail: function (user, callback) {
+		var smtpTransport = nodemailer.createTransport("SMTP", {
+			    service: "Gmail",
+			    auth: {
+			        user: "cubbyholeapi@gmail.com",
+			        pass: "cubbyhole1"
+			    }
+		});
+
+		var token = jwt.encode({
+			id: user._id,
+			created: Date.now()
+		}, cfg.token.secret);
+
+		var mailOptions = {
+		    from: "Cubbyhole <noreply@cubbyhole.com>",
+		    to: user.mail,
+		    subject: "Cubbyhole signup confirmation",
+		    html: "<a href='http://localhost:3000/auth/confirm/" + token + "''>Confirm your mail</a>"
+		}
+
+		smtpTransport.sendMail(mailOptions, function (err, res) {
+		    if (err) return callback(err);
+		    
+		 	smtpTransport.close(); 
+		 	callback();
 		});
 	}
 };

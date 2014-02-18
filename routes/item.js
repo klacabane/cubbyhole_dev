@@ -7,7 +7,7 @@ module.exports = function (app) {
 	/*
 	 *	POST
 	 */
-	app.post('/item', function (req, res) {
+	app.post('/item', mw.checkAuth, function (req, res) {
 		var type = req.body.type,
 			parent = req.body.parent,
 			u = req.user,
@@ -58,7 +58,7 @@ module.exports = function (app) {
 	/*
 	 * 	GET
 	 */
-	app.get('/item/:id', mw.validateId, function (req, res) {
+	app.get('/item/:id', mw.checkAuth, mw.validateId, function (req, res) {
 		Item.findOne({_id: req.params.id}, function (err, item) {
 			if (err) return res.send(500);
 			if (!item) return res.send(404);
@@ -69,7 +69,7 @@ module.exports = function (app) {
 		});
 	});
 
-	app.get('/item', function (req, res) {
+	app.get('/item', mw.checkAuth, function (req, res) {
 		Item.find({owner: req.user, parent: { $exists: false }}, function (err, items) {
 			var fn = [];
 			items.forEach( function (it) {
@@ -109,7 +109,7 @@ module.exports = function (app) {
 	/* 
 	 * 	DELETE
 	 */
-	app.delete('/item/:id', mw.validateId, function (req, res) {
+	app.delete('/item/:id', mw.checkAuth, mw.validateId, function (req, res) {
 		Item.findOne({_id: req.params.id}, function (err, item) {
 			if (err) return res.send(500);
 			if (!item) return res.send(404);

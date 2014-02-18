@@ -22,8 +22,6 @@ app.set('view options', {
 });
 app.use(express.static(__dirname + '/public'));
 app.use(express.bodyParser());
-// Auth middleware
-app.use('/', mw.checkAuth);
 app.use(app.router);
 app.use(express.favicon());
 app.use(express.logger('dev'));

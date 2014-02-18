@@ -22,6 +22,7 @@ module.exports = function (app) {
 			user.comparePw(pw, function (err, match) {
 				if (err) return res.send(500);
 				if (!match) return res.send(404);
+				if (!user.verified) return res.send(401);
 
 				var t = Utils.generateToken(user, rememberMe);
 				res.send(200, {
@@ -48,12 +49,27 @@ module.exports = function (app) {
 			if (user) return res.send(422);
 			
 			new User({ mail: email, password: pw })
-				.save( function (err) {
+				.save( function (err, u) {
 					if (err) return res.send(500);
 					
-					res.send(201);
+					Utils.sendConfirmationEmail(u, function (err) {
+						if (err) return res.send(500);		// delete user | send recursively?
+
+						res.send(201);
+					})
 				});
 		});
+    });
+
+    // Verify token and render view
+    app.get('/auth/confirm/:token', function (req, res) {
+    	var user = Utils.getTokenUser(req.params.token);
+    	if (!user) return res.render('index', {locals: {error: 'Invalid token.'}});
+
+    	User.findOneAndUpdate({_id: user}, {$set: {verified: true}}, function (err, user) {
+    		if (err) return res.render('index', {locals: {error: err}});
+    		res.render('index', {locals: {email: user.mail}});
+    	});
     });
 
 };

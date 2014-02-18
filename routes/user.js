@@ -5,7 +5,7 @@ var User = require('../models/User'),
 
 module.exports = function (app) {
 	// GET
-	app.get('/user/:id', mw.validateId, function (req, res) {
+	app.get('/user/:id', mw.checkAuth, mw.validateId, function (req, res) {
 		User.findOne({ _id: req.params.id }, '_id mail registrationDate currentPlan', function (err, user) {
 			if (err) return res.send(500);
 			if (!user) return res.send(404);
@@ -18,7 +18,7 @@ module.exports = function (app) {
 	});
 
 	// GET User Items
-	app.get('/user/:id/items', mw.validateId, function (req, res) {
+	app.get('/user/:id/items', mw.checkAuth, mw.validateId, function (req, res) {
 		Item.find({owner: req.params.id, parent: { $exists: false }}, function (err, items) {
 			var fn = [];
 			items.forEach( function (it) {

@@ -5,7 +5,11 @@
     </head>
 
     <body>
-
+        <% if (locals.error) { %>
+            <h2><%= locals.error %></h2>
+        <% } else if (locals.email) { %>
+            <h2>Welcome <%= locals.email %></h2>
+        <% } %>
         <script src="http://code.jquery.com/jquery-1.10.2.min.js"></script>
         <script>
             // $.ajax({
