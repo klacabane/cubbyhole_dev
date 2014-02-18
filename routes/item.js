@@ -93,7 +93,7 @@ module.exports = function (app) {
 				if (err) return res.send(500);
 
 				var rootDir = {
-					_id: -1,
+					_id: '-1',
 					type: 'folder',
 					name: 'My Cubbyhole',
 					children: results
