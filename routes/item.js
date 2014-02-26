@@ -2,7 +2,7 @@ var Item = require('../models/Item'),
 	async = require('async'),
 	Utils = require('../tools/utils'),
 	mw = require('../tools/middlewares'),
-	execFile = require('child_process').execFile;
+    admZip = require('adm-zip');
 
 module.exports = function (app) {
 	/*
@@ -114,10 +114,19 @@ module.exports = function (app) {
 				if (item.type == 'file') {
                     res.download(path);
                 } else {
-					execFile('zip', ['-r', item.name, path], function (err) {
-						if (err) return res.send(500);
-						res.download(item.name + '.zip');
-					});
+                    var zip = new admZip();
+                    zip.addLocalFolder(path, item.name);
+
+                    zip.toBuffer(function (buffer) {
+                        res.writeHead(200, {
+                            'Content-Type': 'application/octet-stream',
+                            'Content-Length': buffer.length,
+                            'Content-Disposition': 'attachment; filename=' + [item.name, '.zip'].join('')
+                        });
+                        res.write(buffer);
+                    }, function () {
+                        res.send(500);
+                    });
 				}
 			});
 		});
