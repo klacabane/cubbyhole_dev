@@ -1,7 +1,8 @@
 var Item = require('../models/Item'),
 	async = require('async'),
 	Utils = require('../tools/utils'),
-	mw = require('../tools/middlewares');
+	mw = require('../tools/middlewares'),
+	execFile = require('child_process').execFile;
 
 module.exports = function (app) {
 	/*
@@ -31,17 +32,14 @@ module.exports = function (app) {
 
 			Item.findOne({name: name, type: type, parent: parent, owner: u}, function (err, item) {
 				if (err) return res.send(500);
-				if (item) name = name.substring(0, name.split('.')[0].length) + Date.now() + name.substring(name.split('.')[0].length, name.length);
+				if (item) name = Utils.rename(name);
 
 				var newItem = new Item({name: name, type: type, owner: u, parent: parent, meta: meta});
 
 				newItem.save(function (err) {
-					if (err)
-						return res.send(500, {
-							error: 'Error creating ' + newItem.type + '.'
-						});
-					// OK
-					return res.send(201, {
+					if (err) return res.send(500);
+
+					res.send(201, {
 						data: {
 							_id: newItem._id,
 							name: newItem.name,
@@ -106,6 +104,25 @@ module.exports = function (app) {
 		});
 	});
 
+	app.get('/item/:id/download', mw.checkAuth, mw.validateId, function (req, res) {
+		Item.findOne({_id: req.params.id}, function (err, item) {
+			if (err) return res.send(500);
+			if (!item) return res.send(404);
+
+			item.getDirPath()
+			.then(function (path) {
+				if (item.type == 'file') {
+                    res.download(path);
+                } else {
+					execFile('zip', ['-r', item.name, path], function (err) {
+						if (err) return res.send(500);
+						res.download(item.name + '.zip');
+					});
+				}
+			});
+		});
+	});
+
 	/* 
 	 * 	DELETE
 	 */
@@ -120,6 +137,31 @@ module.exports = function (app) {
 					if (err) return res.send(500);
 
 					res.send(200);
+				});
+			});
+		});
+	});
+
+	/*
+	 *	PUT
+	 */
+	app.put('/item/:id', mw.checkAuth, mw.validateId, function (req, res) {
+		Item.findOne({_id: req.params.id}, function (err, item) {
+			if (err) return res.send(500);
+			if (!item) return res.send(404);
+			if (req.user != item.owner) return res.send(401);
+
+			var name = req.body.name;
+			Item.findOne({name: name, parent: item.parent}, function (err, i) {
+				if (err) return res.send(500);
+				if (i) name = Utils.rename(name);
+
+				item.name = name;
+				item.save(function (err, uitem) {
+					if (err) return res.send(500);
+					res.send(200, {
+						data: uitem
+					});
 				});
 			});
 		});

@@ -42,13 +42,15 @@ var Utils = {
 			type: file.type
 		};
 	},
+	rename: function (name) {
+		return name.substring(0, name.split('.')[0].length) + Date.now() + name.substring(name.split('.')[0].length, name.length);
+	},
 	/* Folder */
 	rmDir: function (item, cb) {
 		item.getDirPath()
 		.then(function (path) {
-			var p = cfg.storage.dir + '/' + item.owner + '/' + path;
 			if (item.type == 'file') {
-				fs.unlink(p, function (err) {
+				fs.unlink(path, function (err) {
 					if (err) return cb(err);
 					cb();
 				});
@@ -56,7 +58,7 @@ var Utils = {
 				item.getChildren(function (err, childs) {
 					if (err) return cb(err);
 					if (childs.length === 0) {
-						fs.rmdir(p, function (e) {
+						fs.rmdir(path, function (e) {
 							if (e) return cb(e);
 							cb();
 						});
@@ -64,7 +66,7 @@ var Utils = {
 						async.each(childs, Utils.rmDir, function (err) {
 							if (err) return cb(err);
 
-							fs.rmdir(p, function (e) {
+							fs.rmdir(path, function (e) {
 								if (e) return cb(e);
 								cb();
 							});

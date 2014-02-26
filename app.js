@@ -6,7 +6,6 @@ var express = require('express'),
 	http = require('http'),
 	path = require('path'),
 	Utils = require('./tools/utils'),
-	mw = require('./tools/middlewares')
 	mongoose = require('mongoose'),
 	cfg = require('./config'),
 	fs = require('fs');
