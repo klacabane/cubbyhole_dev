@@ -139,7 +139,7 @@ module.exports = function (app) {
 		Item.findOne({_id: req.params.id}, function (err, item) {
 			if (err) return res.send(500);
 			if (!item) return res.send(404);
-			if (req.user != item.owner) return res.send(401);
+			// if (req.user != item.owner) return res.send(401); -- Shared folders can have rw
 
 			Utils.rmDir(item, function (err) {
 				item.remove(function (err) {
@@ -154,7 +154,7 @@ module.exports = function (app) {
 	/*
 	 *	PUT
 	 */
-	app.put('/item/:id', mw.checkAuth, mw.validateId, function (req, res) {
+	app.put('/item/:id/name', mw.checkAuth, mw.validateId, function (req, res) {
 		Item.findOne({_id: req.params.id}, function (err, item) {
 			if (err) return res.send(500);
 			if (!item) return res.send(404);
