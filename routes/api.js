@@ -52,7 +52,7 @@ module.exports = function (app) {
 				.save( function (err, u) {
 					if (err) return res.send(500);
 					
-					Utils.sendConfirmationEmail(u, function (err) {
+					Utils.sendEmail(u, function (err) {
 						if (err) return res.send(500);		// delete user | send recursively?
 
 						res.send(201);

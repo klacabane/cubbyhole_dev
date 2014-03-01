@@ -103,34 +103,53 @@ var Utils = {
 			});
 		});
 	},
-	/* */
-	sendConfirmationEmail: function (user, callback) {
-		var smtpTransport = nodemailer.createTransport("SMTP", {
-			    service: "Gmail",
-			    auth: {
-			        user: "cubbyholeapi@gmail.com",
-			        pass: "cubbyhole1"
-			    }
-		});
+	/* Email */
+	sendEmail: function (recipient, details, callback) {
+        var recipient = recipient,
+            details = details,
+            callback = callback || details,
+            options = {
+                from: "Cubbyhole <noreply@cubbyhole.com>",
+                to: recipient.mail
+            };
 
-		var token = jwt.encode({
-			id: user._id,
-			created: Date.now()
-		}, cfg.token.secret);
+        var smtpTransport = nodemailer.createTransport("SMTP", {
+            service: "Gmail",
+            auth: {
+                user: "cubbyholeapi@gmail.com",
+                pass: "cubbyhole1"
+            }
+        });
 
-		var mailOptions = {
-		    from: "Cubbyhole <noreply@cubbyhole.com>",
-		    to: user.mail,
-		    subject: "Cubbyhole signup confirmation",
-		    html: "<a href='http://localhost:3000/auth/confirm/" + token + "''>Confirm your mail</a>"
-		}
+        var token;
+        if (typeof details === 'function') {    // Account Verification
+            token = jwt.encode({
+                id: recipient._id,
+                created: Date.now()
+            }, cfg.token.secret);
 
-		smtpTransport.sendMail(mailOptions, function (err, res) {
-		    if (err) return callback(err);
-		    
-		 	smtpTransport.close(); 
-		 	callback();
-		});
+            options.subject = "Cubbyhole signup confirmation";
+            options.html = "<a href='http://localhost:3000/auth/confirm/" + token + "''>Confirm your mail</a>";
+        } else {
+            if (!details.hasOwnProperty('share')) { // Remove
+                options.subject = details.from.mail + ' removed the ' + details.item.type + ' ' + details.item.name + '.';
+            } else {
+                token = jwt.encode({
+                    share: details.share,
+                    created: Date.now()
+                }, cfg.token.secret);
+
+                options.subject = details.from.mail + ' wants to share the ' + details.item.type + ' ' + details.item.name + ' with you.';
+                options.html = "<a href='http://localhost:3000/item/share/confirm/" + token + "''>See the" + details.item.type + "</a>";
+            }
+        }
+
+        smtpTransport.sendMail(options, function (err, res) {
+            if (err) return callback(err);
+
+            smtpTransport.close();
+            callback();
+        });
 	}
 };
 

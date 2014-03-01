@@ -1,8 +1,12 @@
 var Item = require('../models/Item'),
+    ItemShare = require('../models/ItemShare'),
+    User = require('../models/User'),
 	async = require('async'),
 	Utils = require('../tools/utils'),
 	mw = require('../tools/middlewares'),
-    admZip = require('adm-zip');
+    admZip = require('adm-zip'),
+    path = require('path'),
+    fs = require('fs');
 
 module.exports = function (app) {
 	/*
@@ -52,6 +56,43 @@ module.exports = function (app) {
 			});
 		});
 	});
+
+    // Share
+    app.post('/item/share', mw.checkAuth, mw.validateId, function (req, res) {
+        var itemId = req.body.id,
+            userId = req.body.with,
+            owner = req.user;
+
+        async.parallel({
+            item: function (callback) {
+                Item.findOne({_id: itemId}, callback);
+            },
+            recipient: function (callback) {
+                User.findOne({_id: userId}, callback);
+            },
+            owner: function (callback) {
+                User.findOne({_id: owner}, callback);
+            }
+        }, function (err, results) {
+            if (err) return res.send(500);
+            if (!results.item || !results.recipient) return res.send(404);
+
+            new ItemShare({item: itemId, with: userId})
+                .save(function (err, itemShare) {
+                    if (err) return res.send(500);
+
+                    var details = {
+                        item: results.item,
+                        from: results.owner,
+                        share: itemShare._id
+                    };
+                    Utils.sendEmail(results.recipient, details, function (err) {
+                        if (err) return res.send(500);
+                        res.send(201);
+                    })
+                });
+        });
+    });
 	
 	/*
 	 * 	GET
@@ -110,12 +151,12 @@ module.exports = function (app) {
 			if (!item) return res.send(404);
 
 			item.getDirPath()
-			.then(function (path) {
+			.then(function (dirPath) {
 				if (item.type == 'file') {
-                    res.download(path);
+                    res.download(dirPath);
                 } else {
                     var zip = new admZip();
-                    zip.addLocalFolder(path, item.name);
+                    zip.addLocalFolder(dirPath, item.name);
 
                     zip.toBuffer(function (buffer) {
                         res.writeHead(200, {
@@ -158,20 +199,28 @@ module.exports = function (app) {
 		Item.findOne({_id: req.params.id}, function (err, item) {
 			if (err) return res.send(500);
 			if (!item) return res.send(404);
-			if (req.user != item.owner) return res.send(401);
+			// if (req.user != item.owner) return res.send(401);
 
 			var name = req.body.name;
 			Item.findOne({name: name, parent: item.parent}, function (err, i) {
 				if (err) return res.send(500);
 				if (i) name = Utils.rename(name);
 
-				item.name = name;
-				item.save(function (err, uitem) {
-					if (err) return res.send(500);
-					res.send(200, {
-						data: uitem
-					});
-				});
+                item.getDirPath()
+                    .then(function (oldPath) {
+                        var newPath = path.join(path.dirname(oldPath), name);
+                        fs.rename(oldPath, newPath, function (err) {
+                            if (err) return res.send(500);
+
+                            item.name = name;
+                            item.save(function (err, uitem) {
+                                if (err) return res.send(500);
+                                res.send(200, {
+                                    data: uitem
+                                });
+                            });
+                        })
+                    });
 			});
 		});
 	});

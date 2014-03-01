@@ -16,7 +16,7 @@ module.exports = {
 		next();
 	},
 	validateId: function (req, res, next) {
-		var id = req.params.id;
+		var id = req.params.id || req.body.id;
 
 		if (!id.match(/^[0-9a-fA-F]{24}$/))
 			return res.send(400, {
