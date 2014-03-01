@@ -51,7 +51,7 @@ itemSchema.pre('save', function (next) {
 itemSchema.methods.getDirPath = function () {
 	var defer = Q.defer(),
 		that = this,
-		fullPath = path.join(cfg.storage.dir, that.owner);
+		fullPath = path.join(cfg.storage.dir, that.owner.toString());
 
 	if (!this.parent)
 		defer.resolve(path.join(fullPath, this.name));
