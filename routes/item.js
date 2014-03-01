@@ -195,33 +195,37 @@ module.exports = function (app) {
 	/*
 	 *	PUT
 	 */
-	app.put('/item/:id/name', mw.checkAuth, mw.validateId, function (req, res) {
+	app.put('/item/:id', mw.checkAuth, mw.validateId, function (req, res) {
 		Item.findOne({_id: req.params.id}, function (err, item) {
 			if (err) return res.send(500);
 			if (!item) return res.send(404);
 			// if (req.user != item.owner) return res.send(401);
 
-			var name = req.body.name;
-			Item.findOne({name: name, parent: item.parent}, function (err, i) {
-				if (err) return res.send(500);
-				if (i) name = Utils.rename(name);
+            if (req.body.hasOwnProperty('name')) {
+                var name = req.body.name;
+                Item.findOne({name: name, parent: item.parent}, function (err, i) {
+                    if (err) return res.send(500);
+                    if (i) name = Utils.rename(name);
 
-                item.getDirPath()
-                    .then(function (oldPath) {
-                        var newPath = path.join(path.dirname(oldPath), name);
-                        fs.rename(oldPath, newPath, function (err) {
-                            if (err) return res.send(500);
-
-                            item.name = name;
-                            item.save(function (err, uitem) {
+                    item.getDirPath()
+                        .then(function (oldPath) {
+                            var newPath = path.join(path.dirname(oldPath), name);
+                            fs.rename(oldPath, newPath, function (err) {
                                 if (err) return res.send(500);
-                                res.send(200, {
-                                    data: uitem
+
+                                item.name = name;
+                                item.save(function (err, uitem) {
+                                    if (err) return res.send(500);
+                                    res.send(200, {
+                                        data: uitem
+                                    });
                                 });
-                            });
-                        })
-                    });
-			});
+                            })
+                        });
+                });
+            } else {
+                // process parent update
+            }
 		});
 	});
 
