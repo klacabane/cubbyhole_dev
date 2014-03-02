@@ -68,7 +68,7 @@ module.exports = function (app) {
 
     	User.findOneAndUpdate({_id: user}, {$set: {verified: true}}, function (err, user) {
     		if (err) return res.render('index', {locals: {error: err}});
-    		res.render('index', {locals: {email: user.mail}});
+    		res.redirect('http://localhost:8000/index.html?email=' + user.mail);
     	});
     });
 
