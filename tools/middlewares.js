@@ -3,14 +3,9 @@ var Utils = require('../tools/utils');
 module.exports = {
 	checkAuth: function (req, res, next) {
 		if (req.path != '/' && req.path != '/auth/signin' && req.path != '/auth/signup' && req.method != 'OPTIONS') {
-			var token = req.get('X-Cub-AuthToken');
+			var token = req.get('X-Cub-AuthToken') || req.params.token;
 			
-			if (token === undefined || !Utils.isTokenValid(token)) {
-				token = req.params.token;
-				if (token === undefined || !Utils.isTokenValid(token)) {
-					return res.send(401);
-				}
-			}
+			if (token === undefined || !Utils.isTokenValid(token)) return res.send(401);
 			
 			req.user = Utils.getTokenUser(token);
 		}
