@@ -145,7 +145,7 @@ module.exports = function (app) {
 		});
 	});
 
-	app.get('/item/:id/download', mw.checkAuth, mw.validateId, function (req, res) {
+	app.get('/item/:id/download/:token', mw.checkAuth, mw.validateId, function (req, res) {
 		Item.findOne({_id: req.params.id}, function (err, item) {
 			if (err) return res.send(500);
 			if (!item) return res.send(404);

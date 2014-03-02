@@ -4,14 +4,20 @@ module.exports = {
 	checkAuth: function (req, res, next) {
 		if (req.path != '/' && req.path != '/auth/signin' && req.path != '/auth/signup' && req.method != 'OPTIONS') {
 			var token = req.get('X-Cub-AuthToken');
-			if (token === undefined || !Utils.isTokenValid(token)) return res.send(401);
+			
+			if (token === undefined || !Utils.isTokenValid(token)) {
+				token = req.params.token;
+				if (token === undefined || !Utils.isTokenValid(token)) {
+					return res.send(401);
+				}
+			}
 			
 			req.user = Utils.getTokenUser(token);
 		}
 
-		res.header("Access-Control-Allow-Origin", "*");
-		res.header("Access-Control-Allow-Headers", "X-Requested-With, X-Cub-AuthToken, Content-Type");
-		res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+		res.header('Access-Control-Allow-Origin', '*');
+		res.header('Access-Control-Allow-Headers', 'X-Requested-With, X-Cub-AuthToken, Content-Type');
+		res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
 
 		next();
 	},
