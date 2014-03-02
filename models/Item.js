@@ -72,7 +72,7 @@ itemSchema.methods.getDirPath = function () {
  *	Statics
  */
 itemSchema.statics.parentExists = function (id, cb) {
-	if (!id) return cb(null, true);
+	if (!id || id === '-1') return cb(null, true);
 	if (!id.match(/^[0-9a-fA-F]{24}$/)) return cb(null, false);
 
 	this.findOne({_id: id}, function (err, item) {

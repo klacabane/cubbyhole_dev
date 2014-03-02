@@ -14,7 +14,7 @@ module.exports = function (app) {
 	 */
 	app.post('/item', mw.checkAuth, function (req, res) {
 		var type = req.body.type,
-			parent = req.body.parent,
+			parent = (req.body.parent === '-1') ? undefined : req.body.parent,
 			u = req.user,
 			meta = {},
 			name;
