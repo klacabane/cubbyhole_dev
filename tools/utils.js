@@ -47,8 +47,8 @@ var Utils = {
 	},
 	/* Folder */
 	rmDir: function (item, cb) {
-		item.getDirPath()
-		.then(function (path) {
+		item.getDirPath(function (err, path) {
+            if (err) return cb(err);
 			if (item.type == 'file') {
 				fs.unlink(path, function (err) {
 					if (err) return cb(err);

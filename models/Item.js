@@ -22,8 +22,9 @@ itemSchema.pre('save', function (next) {
 	var that = this;
 
 	if (this.isNew) {
-		this.getDirPath()
-		.then(function (path) {
+		this.getDirPath(function (err, path) {
+            if (err) return next(err);
+
 			if (that.type == 'folder')
 				fs.mkdir(path, function (e) {
 					if (e) return next(e);
@@ -48,24 +49,21 @@ itemSchema.pre('save', function (next) {
 /*
  *	Methods
  */
-itemSchema.methods.getDirPath = function () {
-	var defer = Q.defer(),
-		that = this,
-		fullPath = path.join(cfg.storage.dir, that.owner.toString());
+itemSchema.methods.getDirPath = function (callback) {
+    var that = this,
+        fullPath = path.join(cfg.storage.dir, that.owner.toString());
 
-	if (!this.parent)
-		defer.resolve(path.join(fullPath, this.name));
-	else
-		this.getAncestors(function (err, items) {
-			if (err) return defer.reject(err);
-			
-			items.forEach(function (i) {
-				fullPath = path.join(fullPath, i.name);
-			});
-			defer.resolve(path.join(fullPath, that.name));
-		});
+    if (!this.parent)
+        return callback(null, path.join(fullPath, this.name));
 
-	return defer.promise;
+    this.getAncestors(function (err, items) {
+        if (err) return callback(err);
+
+        items.forEach(function (i) {
+            fullPath = path.join(fullPath, i.name);
+        });
+        callback(null, path.join(fullPath, that.name));
+    });
 };
 
 /*

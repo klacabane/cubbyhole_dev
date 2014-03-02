@@ -150,23 +150,29 @@ module.exports = function (app) {
 			if (err) return res.send(500);
 			if (!item) return res.send(404);
 
-			item.getDirPath()
-			.then(function (dirPath) {
+			item.getDirPath(function (err, dirPath) {
+                if (err) return res.send(500);
+
 				if (item.type == 'file') {
                     res.download(dirPath);
                 } else {
-                    var zip = new admZip();
-                    zip.addLocalFolder(dirPath, item.name);
+                    item.getChildren(function (err, childrens) {
+                        if (err) return res.send(500);
+                        if (childrens.length === 0) return res.send(405);
 
-                    zip.toBuffer(function (buffer) {
-                        res.writeHead(200, {
-                            'Content-Type': 'application/octet-stream',
-                            'Content-Length': buffer.length,
-                            'Content-Disposition': 'attachment; filename=' + [item.name, '.zip'].join('')
+                        var zip = new admZip();
+                        zip.addLocalFolder(dirPath, item.name);
+
+                        zip.toBuffer(function (buffer) {
+                            res.writeHead(200, {
+                                'Content-Type': 'application/octet-stream',
+                                'Content-Length': buffer.length,
+                                'Content-Disposition': 'attachment; filename=' + [item.name, '.zip'].join('')
+                            });
+                            res.write(buffer);
+                        }, function () {
+                            res.send(500);
                         });
-                        res.write(buffer);
-                    }, function () {
-                        res.send(500);
                     });
 				}
 			});
@@ -183,6 +189,8 @@ module.exports = function (app) {
 			// if (req.user != item.owner) return res.send(401); -- Shared folders can have rw
 
 			Utils.rmDir(item, function (err) {
+                if (err) return res.send(500);
+
 				item.remove(function (err) {
 					if (err) return res.send(500);
 
@@ -201,32 +209,48 @@ module.exports = function (app) {
 			if (!item) return res.send(404);
 			// if (req.user != item.owner) return res.send(401);
 
-            if (req.body.hasOwnProperty('name')) {
-                var name = req.body.name;
-                Item.findOne({name: name, parent: item.parent}, function (err, i) {
-                    if (err) return res.send(500);
+            var name = req.body.name || item.name;
+            var parent = function () {
+                if (!req.body.parent && item.parent) return item.parent.toString();
+                else if (req.body.parent === '-1' || (!req.body.parent && !item.parent)) return undefined;
+
+                return req.body.parent;
+            }();
+
+            async.waterfall([
+                function (cb) {
+                    Item.parentExists(parent, cb);
+                },
+                function (exists, cb) {
+                    if (!exists) return cb(true, 422); //hm
+                    Item.findOne({name: name, parent: parent, owner: item.owner}, cb);
+                },
+                function (i, cb) {
                     if (i) name = Utils.rename(name);
-
-                    item.getDirPath()
-                        .then(function (oldPath) {
-                            var newPath = path.join(path.dirname(oldPath), name);
-                            fs.rename(oldPath, newPath, function (err) {
-                                if (err) return res.send(500);
-
-                                item.name = name;
-                                item.save(function (err, uitem) {
-                                    if (err) return res.send(500);
-                                    res.send(200, {
-                                        data: uitem
-                                    });
-                                });
-                            })
+                    item.getDirPath(function (err, oldPath) {
+                        if (err) return cb(err);
+                        item.name = name;
+                        item.parent = parent;
+                        item.save(function (err, uitem) {
+                            if (err) return cb(err);
+                            cb(null, oldPath, uitem);
                         });
-                });
-            } else {
-                // process parent update
-            }
-		});
+                    });
+                }
+            ], function (err, oldPath, uitem) {
+                if (err) return res.send(oldPath || 500);
+
+                uitem.getDirPath(function (err, newPath) {
+                    if (err) return res.send(500);
+                    fs.rename(oldPath, newPath, function (err) {
+                        if (err) return res.send(500);
+                        res.send(200, {
+                            data: uitem
+                        });
+                    });
+                })
+            });
+        });
 	});
 
 };
