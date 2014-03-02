@@ -6,11 +6,12 @@ var mongoose = require('mongoose'),
     path = require('path');
 
 var itemSchema = new mongoose.Schema({
-	name: 		String,
-	type: 		String,
-	url: 		String,
-	owner: 		{ type: mongoose.Schema.ObjectId, ref: 'User' },
-	meta: 		mongoose.Schema.Types.Mixed
+	name: 		    String,
+	type: 		    String,
+	url: 		    String,
+	owner: 		    {type: mongoose.Schema.ObjectId, ref: 'User'},
+	meta: 		    mongoose.Schema.Types.Mixed,
+    lastModified:   {type: Date, default: Date.now}
 });
 
 itemSchema.plugin(tree);

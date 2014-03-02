@@ -38,21 +38,14 @@ module.exports = function (app) {
 				if (err) return res.send(500);
 				if (item) name = Utils.rename(name);
 
-				var newItem = new Item({name: name, type: type, owner: u, parent: parent, meta: meta});
-
-				newItem.save(function (err) {
+				new Item({name: name, type: type, owner: u, parent: parent, meta: meta})
+                    .save(function (err, newItem) {
 					if (err) return res.send(500);
 
 					res.send(201, {
-						data: {
-							_id: newItem._id,
-							name: newItem.name,
-							type: newItem.type,
-							parent: newItem.parent,
-							meta: newItem.meta
-						}
+						data: newItem
+						});
 					});
-				});
 			});
 		});
 	});
@@ -231,6 +224,7 @@ module.exports = function (app) {
                         if (err) return cb(err);
                         item.name = name;
                         item.parent = parent;
+                        item.lastModified = Date.now();
                         item.save(function (err, uitem) {
                             if (err) return cb(err);
                             cb(null, oldPath, uitem);
