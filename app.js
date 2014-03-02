@@ -20,7 +20,7 @@ app.set('view options', {
     layout: false
 });
 app.use(express.static(__dirname + '/public'));
-app.use(express.bodyParser());
+app.use(express.bodyParser({limit: '1000mb'}));
 
 app.use(function (req, res, next) {
  res.header("Access-Control-Allow-Origin", "*");
