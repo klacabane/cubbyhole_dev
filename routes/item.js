@@ -109,6 +109,7 @@ module.exports = function (app) {
 					it.getChildrenTree({fields: 'id type name meta'}, function (err, childrens) {
 						if (err) return callback(err);
 
+                        childrens.sort(Utils.sortByName);
 						var dir = {
 							_id: it._id,
 							name: it.name,
@@ -124,6 +125,7 @@ module.exports = function (app) {
 			async.parallel(fn, function (err, results) {
 				if (err) return res.send(500);
 
+                results.sort(Utils.sortByName);
 				var rootDir = {
 					_id: '-1',
 					type: 'folder',
@@ -212,6 +214,7 @@ module.exports = function (app) {
 
             async.waterfall([
                 function (cb) {
+                    if (!parent) return cb(null, true);
                     Item.parentExists(parent, cb);
                 },
                 function (exists, cb) {
