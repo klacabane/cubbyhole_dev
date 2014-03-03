@@ -106,10 +106,9 @@ module.exports = function (app) {
 			var fn = [];
 			items.forEach( function (it) {
 				fn.push(function (callback) {
-					it.getChildrenTree({fields: 'id type name meta'}, function (err, childrens) {
+					it.getChildrenTree({fields: 'id type name meta lastModified owner'}, function (err, childrens) {
 						if (err) return callback(err);
 
-                        childrens.sort(Utils.sortByName);
 						var dir = {
 							_id: it._id,
 							name: it.name,
@@ -127,7 +126,7 @@ module.exports = function (app) {
 			async.parallel(fn, function (err, results) {
 				if (err) return res.send(500);
 
-                results.sort(Utils.sortByName);
+                Utils.sortRecv(results);
 				var rootDir = {
 					_id: '-1',
 					type: 'folder',

@@ -151,10 +151,19 @@ var Utils = {
             callback();
         });
 	},
-    sortByName: function (a, b) {
+    _sortByName: function (a, b) {
         if(a.name < b.name) return -1;
         if(a.name > b.name) return 1;
         return 0;
+    },
+    sortRecv: function (childrens) {
+        if (!childrens.length) return;
+
+        childrens.sort(Utils._sortByName);
+        for (var i = 0, length = childrens.length; i < length; i++) {
+            if (!childrens[i].children.length) continue;
+            Utils.sortRecv(childrens[i].children);
+        }
     }
 };
 
