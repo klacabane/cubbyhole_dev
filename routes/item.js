@@ -115,6 +115,8 @@ module.exports = function (app) {
 							name: it.name,
 							type: it.type,
 							meta: it.meta,
+                            lastModified: it.lastModified,
+                            owner: it.owner,
 							children: childrens
 						}
 						callback(null, dir);
