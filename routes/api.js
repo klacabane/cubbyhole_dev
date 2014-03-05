@@ -6,6 +6,8 @@ module.exports = function (app) {
     require('../routes/user')(app);
     require('../routes/plan')(app);
     require('../routes/item')(app);
+    require('../routes/share')(app);
+    require('../routes/notification')(app);
 
     // Signin
     app.post('/auth/signin', function (req, res) {

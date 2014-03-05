@@ -8,6 +8,7 @@ var express = require('express'),
 	Utils = require('./tools/utils'),
 	mongoose = require('mongoose'),
 	cfg = require('./config'),
+    mw = require('./tools/middlewares'),
 	fs = require('fs');
 
 var app = express();
@@ -21,15 +22,7 @@ app.set('view options', {
 });
 app.use(express.static(__dirname + '/public'));
 app.use(express.bodyParser({limit: '1000mb'}));
-
-app.use(function (req, res, next) {
- res.header("Access-Control-Allow-Origin", "*");
- res.header("Access-Control-Allow-Headers", "X-Requested-With, X-Cub-AuthToken, Content-Type");
- res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-
- next();
-});
-
+app.use(mw.setHeaders);
 app.use(app.router);
 app.use(express.favicon());
 app.use(express.logger('dev'));

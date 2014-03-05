@@ -1,11 +1,12 @@
 var Item = require('../models/Item'),
     ItemShare = require('../models/ItemShare'),
     User = require('../models/User'),
+    Notification = require('../models/Notification'),
 	async = require('async'),
 	Utils = require('../tools/utils'),
 	mw = require('../tools/middlewares'),
     admZip = require('adm-zip'),
-    fs = require('fs');
+    fs = require('fs-extra');
 
 module.exports = function (app) {
 	/*
@@ -47,44 +48,6 @@ module.exports = function (app) {
 			});
 		});
 	});
-
-    // Share
-    app.post('/item/share', mw.checkAuth, mw.validateId, function (req, res) {
-        var itemId = req.body.id,
-            receiver = req.body.with,
-            user = req.user;
-
-        async.parallel({
-            item: function (callback) {
-                Item.findOne({_id: itemId}, callback);
-            },
-            recipient: function (callback) {
-                User.findOne({_id: receiver}, callback);
-            },
-            from: function (callback) {
-                User.findOne({_id: user}, callback);
-            }
-        }, function (err, results) {
-            if (err) return res.send(500);
-            if (!results.item || !results.recipient) return res.send(404);
-
-            new ItemShare({item: itemId, with: receiver})
-                .save(function (err, itemShare) {
-                    if (err) return res.send(500);
-
-                    var details = {
-                        item: results.item,
-                        from: results.from,
-                        share: itemShare._id
-                    };
-
-                    Utils.sendEmail(results.recipient, details, function (err) {
-                        if (err) return res.send(500);
-                        res.send(201);
-                    })
-                });
-        });
-    });
 	
 	/*
 	 * 	GET
@@ -239,7 +202,7 @@ module.exports = function (app) {
 
                 uitem.getDirPath(function (err, newPath) {
                     if (err) return res.send(500);
-                    fs.rename(oldPath, newPath, function (err) {
+                    fs.copy(oldPath, newPath, function (err) {
                         if (err) return res.send(500);
 
                         res.send(200, {

@@ -15,6 +15,7 @@
     "mongoose-path-tree": "*",
     "jwt-simple": "*",
     "nodemailer": "*",
-    "adm-zip": "*"
+    "adm-zip": "*",
+    "fs-extra": "*"
   }
 }
