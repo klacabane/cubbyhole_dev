@@ -205,8 +205,11 @@ module.exports = function (app) {
                     fs.copy(oldPath, newPath, function (err) {
                         if (err) return res.send(500);
 
-                        res.send(200, {
-                            data: uitem
+                        fs.remove(oldPath, function (err) {
+                            if (err) return res.send(500);
+                            res.send(200, {
+                                data: uitem
+                            });
                         });
                     });
                 })
