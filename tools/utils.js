@@ -48,37 +48,6 @@ var Utils = {
 	rename: function (name) {
 		return name.substring(0, name.split('.')[0].length) + Date.now() + name.substring(name.split('.')[0].length, name.length);
 	},
-	/* Folder */
-	rmDir: function (item, cb) {
-		item.getDirPath(function (err, path) {
-            if (err) return cb(err);
-			if (item.type == 'file') {
-				fs.unlink(path, function (err) {
-					if (err) return cb(err);
-					cb();
-				});
-			} else {
-				item.getChildren(function (err, childs) {
-					if (err) return cb(err);
-					if (childs.length === 0) {
-						fs.rmdir(path, function (e) {
-							if (e) return cb(e);
-							cb();
-						});
-					} else {
-						async.each(childs, Utils.rmDir, function (err) {
-							if (err) return cb(err);
-
-							fs.rmdir(path, function (e) {
-								if (e) return cb(e);
-								cb();
-							});
-						});
-					}
-				});
-			}
-		});
-	},
 	/* DB */
 	insertPlanAndBw: function (callback) {
 		fs.readFile('./datas/planAndBw.json', function (err, data) {

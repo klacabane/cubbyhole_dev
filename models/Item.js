@@ -1,8 +1,7 @@
 var mongoose = require('mongoose'),
 	tree = require('mongoose-path-tree'),
 	cfg = require('../config'),
-	fs = require('fs'),
-	Q = require('q'),
+	fs = require('fs-extra'),
     path = require('path');
 
 var itemSchema = new mongoose.Schema({
@@ -43,6 +42,13 @@ itemSchema.pre('save', function (next) {
                     next();
                 });
             });
+    });
+});
+
+itemSchema.pre('remove', function (next) {
+    this.getDirPath(function (err, path) {
+        if (err) return next(err);
+        fs.remove(path, next);
     });
 });
 

@@ -146,15 +146,11 @@ module.exports = function (app) {
 			if (!item) return res.send(404);
 			// if (req.user != item.owner) return res.send(401); -- Shared folders can have rw
 
-			Utils.rmDir(item, function (err) {
+            item.remove(function (err) {
                 if (err) return res.send(500);
 
-				item.remove(function (err) {
-					if (err) return res.send(500);
-
-					res.send(200);
-				});
-			});
+                res.send(200);
+            });
 		});
 	});
 
