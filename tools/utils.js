@@ -36,10 +36,13 @@ var Utils = {
 	},
 	/* File */
 	getFileMeta: function (file) {
+        var ext = file.name.split('.').pop();
+        var type = this._extensions.find(ext);
+
 		return {
 			tmp: file.path,
 			size: file.size,
-			type: file.type
+			type: type
 		};
 	},
 	rename: function (name) {
@@ -140,7 +143,7 @@ var Utils = {
                 }, cfg.token.secret);
 
                 options.subject = details.from.mail + ' wants to share the ' + details.item.type + ' ' + details.item.name + ' with you.';
-                options.html = "<a href='http://localhost:3000/item/share/confirm/" + token + "''>See the" + details.item.type + "</a>";
+                options.html = "<a href='http://localhost:3000/item/share/confirm/" + token + "''>See the " + details.item.type + "</a>";
             }
         }
 
@@ -164,7 +167,26 @@ var Utils = {
             if (!childrens[i].children.length) continue;
             Utils.sortRecv(childrens[i].children);
         }
+    },
+    /*
+     * Extensions
+     */
+    _extensions: {
+        _image: ['Image', ['jpg', 'jpeg', 'png', 'jp2', 'gif']],
+        _audio: ['Audio', ['mp3']],
+        _video: ['Video', ['avi', 'mkv']],
+        _archive: ['Archive', ['zip', 'rar']],
+        find: function (ext) {
+            for (var p in this) {
+                var property = this[p];
+                if (Array.isArray(property)
+                    && property[1].indexOf(ext) > -1)
+                    return property[0];
+            }
+            return 'Document';
+        }
     }
 };
+
 
 module.exports = Utils;

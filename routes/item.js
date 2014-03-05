@@ -5,7 +5,6 @@ var Item = require('../models/Item'),
 	Utils = require('../tools/utils'),
 	mw = require('../tools/middlewares'),
     admZip = require('adm-zip'),
-    path = require('path'),
     fs = require('fs');
 
 module.exports = function (app) {
@@ -19,8 +18,7 @@ module.exports = function (app) {
 			meta = {},
 			name;
 
-		if (type != 'folder' && type != 'file')
-			return res.send(400);
+		if (type != 'folder' && type != 'file') return res.send(400);
 
 		Item.parentExists(parent, function (err, exists) {
 			if (err) return res.send(500);
@@ -44,8 +42,8 @@ module.exports = function (app) {
 
 					res.send(201, {
 						data: newItem
-						});
 					});
+				});
 			});
 		});
 	});
@@ -53,32 +51,33 @@ module.exports = function (app) {
     // Share
     app.post('/item/share', mw.checkAuth, mw.validateId, function (req, res) {
         var itemId = req.body.id,
-            userId = req.body.with,
-            owner = req.user;
+            receiver = req.body.with,
+            user = req.user;
 
         async.parallel({
             item: function (callback) {
                 Item.findOne({_id: itemId}, callback);
             },
             recipient: function (callback) {
-                User.findOne({_id: userId}, callback);
+                User.findOne({_id: receiver}, callback);
             },
-            owner: function (callback) {
-                User.findOne({_id: owner}, callback);
+            from: function (callback) {
+                User.findOne({_id: user}, callback);
             }
         }, function (err, results) {
             if (err) return res.send(500);
             if (!results.item || !results.recipient) return res.send(404);
 
-            new ItemShare({item: itemId, with: userId})
+            new ItemShare({item: itemId, with: receiver})
                 .save(function (err, itemShare) {
                     if (err) return res.send(500);
 
                     var details = {
                         item: results.item,
-                        from: results.owner,
+                        from: results.from,
                         share: itemShare._id
                     };
+
                     Utils.sendEmail(results.recipient, details, function (err) {
                         if (err) return res.send(500);
                         res.send(201);
@@ -242,6 +241,7 @@ module.exports = function (app) {
                     if (err) return res.send(500);
                     fs.rename(oldPath, newPath, function (err) {
                         if (err) return res.send(500);
+
                         res.send(200, {
                             data: uitem
                         });
@@ -250,5 +250,4 @@ module.exports = function (app) {
             });
         });
 	});
-
 };

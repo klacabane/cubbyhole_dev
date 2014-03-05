@@ -22,29 +22,28 @@ itemSchema.plugin(tree);
 itemSchema.pre('save', function (next) {
 	var that = this;
 
-	if (this.isNew) {
-		this.getDirPath(function (err, path) {
-            if (err) return next(err);
+	if (!this.isNew) return next();
 
-			if (that.type == 'folder')
-				fs.mkdir(path, function (e) {
-					if (e) return next(e);
-					next();
-				});
-			else
-				fs.readFile(that.meta.tmp, function (err, data) {
-					if (err) return next(err);
-				  	fs.writeFile(path, data, function (err) {
-				  		if (err) return next(err);
-				  		
-				  		that.meta.tmp = undefined;
-				  		next();
-			  		});
-				});
-		});
-	} else {
-		next();
-	}
+    // new Item, make dir or write file
+    this.getDirPath(function (err, path) {
+        if (err) return next(err);
+
+        if (that.type == 'folder')
+            fs.mkdir(path, function (e) {
+                if (e) return next(e);
+                next();
+            });
+        else
+            fs.readFile(that.meta.tmp, function (err, data) {
+                if (err) return next(err);
+                fs.writeFile(path, data, function (err) {
+                    if (err) return next(err);
+
+                    that.meta.tmp = undefined;
+                    next();
+                });
+            });
+    });
 });
 
 /*
