@@ -1,9 +1,8 @@
 var mongoose = require('mongoose'),
 	UserPlan = require('../models/UserPlan'),
-	cfg = require('../config'),
+    Item = require('../models/Item'),
 	async = require('async'),
-	bcrypt = require('bcrypt'),
-	fs = require('fs');
+	bcrypt = require('bcrypt');
 
 /* Properties */
 var userSchema = new mongoose.Schema({
@@ -38,7 +37,8 @@ var userSchema = new mongoose.Schema({
  					that.hashPw(cb);
  				},
  				function (cb) {
- 					fs.mkdir(cfg.storage.dir + '/' + that._id, cb);
+                    new Item({root: true, name: that._id, type: 'folder', owner: that._id})
+                        .save(cb);
  				}], next);
  		}
  	});

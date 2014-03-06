@@ -14,12 +14,12 @@ module.exports = function (app) {
 	 */
 	app.post('/item', mw.checkAuth, function (req, res) {
 		var type = req.body.type,
-			parent = (req.body.parent === '-1') ? undefined : req.body.parent,
+			parent = req.body.parent,
 			u = req.user,
 			meta = {},
 			name;
 
-		if (type != 'folder' && type != 'file') return res.send(400);
+		if (type != 'folder' && type != 'file' || !parent) return res.send(400);
 
 		Item.parentExists(parent, function (err, exists) {
 			if (err) return res.send(500);
@@ -64,8 +64,24 @@ module.exports = function (app) {
 	});
 
 	app.get('/item', mw.checkAuth, function (req, res) {
-		Item.find({owner: req.user, parent: { $exists: false }}, function (err, items) {
-			var fn = [];
+		Item.findOne({owner: req.user, root: true}, function (err, rootFolder) {
+            if (err) return res.send(500);
+            rootFolder.getChildrenTree({fields: 'id type name meta lastModified owner'}, function (err, childrens) {
+                if (err) res.send(500);
+
+                Utils.sortRecv(childrens);
+                var rootDir = {
+                    _id: rootFolder._id,
+                    type: 'folder',
+                    name: 'My Cubbyhole',
+                    children: childrens
+                };
+                res.json({
+                    success: true,
+                    data: [rootDir]
+                });
+            });
+			/*var fn = [];
 			items.forEach( function (it) {
 				fn.push(function (callback) {
 					it.getChildrenTree({fields: 'id type name meta lastModified owner'}, function (err, childrens) {
@@ -99,7 +115,7 @@ module.exports = function (app) {
 					success: true,
 					data: [rootDir]
 				});
-			});
+			});*/
 		});
 	});
 
@@ -164,16 +180,10 @@ module.exports = function (app) {
 			// if (req.user != item.owner) return res.send(401);
 
             var name = req.body.name || item.name;
-            var parent = function () {
-                if (!req.body.parent && item.parent) return item.parent.toString();
-                else if (req.body.parent === '-1' || (!req.body.parent && !item.parent)) return undefined;
-
-                return req.body.parent;
-            }();
+            var parent = req.body.parent || item.parent;
 
             async.waterfall([
                 function (cb) {
-                    if (!parent) return cb(null, true);
                     Item.parentExists(parent, cb);
                 },
                 function (exists, cb) {

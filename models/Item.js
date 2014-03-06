@@ -10,7 +10,8 @@ var itemSchema = new mongoose.Schema({
 	url: 		    String,
 	owner: 		    {type: mongoose.Schema.ObjectId, ref: 'User'},
 	meta: 		    mongoose.Schema.Types.Mixed,                    // @type, @size
-    lastModified:   {type: Date, default: Date.now}
+    lastModified:   {type: Date, default: Date.now},
+    root:           Boolean
 });
 
 itemSchema.plugin(tree);
@@ -57,10 +58,10 @@ itemSchema.pre('remove', function (next) {
  */
 itemSchema.methods.getDirPath = function (callback) {
     var that = this,
-        fullPath = path.join(cfg.storage.dir, that.owner.toString());
+        fullPath = cfg.storage.dir;
 
-    if (!this.parent)
-        return callback(null, path.join(fullPath, this.name));
+    if (this.root)
+        return callback(null, path.join(cfg.storage.dir, that.owner.toString()));
 
     this.getAncestors(function (err, items) {
         if (err) return callback(err);
@@ -76,7 +77,7 @@ itemSchema.methods.getDirPath = function (callback) {
  *	Statics
  */
 itemSchema.statics.parentExists = function (id, cb) {
-	if (!id || id === '-1') return cb(null, true);
+	if (!id || id === '-1') return cb(null, true);  // remove
 	if (!id.match(/^[0-9a-fA-F]{24}$/)) return cb(null, false);
 
 	this.findOne({_id: id}, function (err, item) {
