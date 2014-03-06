@@ -180,7 +180,7 @@ module.exports = function (app) {
 			// if (req.user != item.owner) return res.send(401);
 
             var name = req.body.name || item.name;
-            var parent = req.body.parent || item.parent;
+            var parent = req.body.parent || item.parent.toString();
 
             async.waterfall([
                 function (cb) {
