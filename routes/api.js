@@ -24,7 +24,7 @@ module.exports = function (app) {
 			user.comparePw(pw, function (err, match) {
 				if (err) return res.send(500);
 				if (!match) return res.send(404);
-				if (!user.verified) return res.send(401);
+				//if (!user.verified) return res.send(401);
 
 				var t = Utils.generateToken(user, rememberMe);
 				res.send(200, {

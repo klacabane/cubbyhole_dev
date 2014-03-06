@@ -6,7 +6,8 @@ var Item = require('../models/Item'),
 	Utils = require('../tools/utils'),
 	mw = require('../tools/middlewares'),
     admZip = require('adm-zip'),
-    fs = require('fs-extra');
+    fs = require('fs-extra'),
+    ObjectId = require('mongoose').Types.ObjectId;
 
 module.exports = function (app) {
 	/*
@@ -48,7 +49,93 @@ module.exports = function (app) {
 			});
 		});
 	});
-	
+
+    var duplicate = function (args, callback) {
+        var name = args.original.name;
+        Item.findOne({name: args.original.name, type: args.original.type, parent: args.newParent}, function (err, exists) {
+            if (exists) name = Utils.rename(name);
+
+            new Item({
+                name: name,
+                owner: args.original.owner,
+                isCopy: true,
+                type: args.original.type,
+                parent: args.newParent,
+                meta: args.original.meta
+            }).save(callback);
+        });
+    };
+
+    var duplicateTree = function (args, callback) {
+        args.original.getChildrenTree(function (err, childrens) {
+            duplicate({original: args.original, newParent: args.newParent}, function (err, dupParent) {
+                if (err) return callback(err);
+                if (!childrens.length) return callback(null, dupParent);
+
+                var cArgs = [];
+                childrens.forEach(function (c) {
+                    cArgs.push({original: new Item(c), newParent: dupParent._id});
+                });
+
+                async.map(cArgs, duplicateTree, function (err) {
+                    if (err) return callback(err);
+
+                    callback(null, dupParent);
+                });
+            });
+        });
+    };
+
+    // PASTE
+    app.post('/item/:id', mw.checkAuth, mw.validateId, function (req, res) {
+        var parent = req.body.parent;
+
+        Item.parentExists(parent, function (err, exists) {
+            if (err) return res.send(500);
+            if (!exists) return res.send(422);
+
+            Item.findOne({_id: req.params.id}, function (err, original) {
+                if (err) return res.send(500);
+                if (!original) return res.send(404);
+
+                duplicateTree({original: original, newParent: parent}, function (err, dup) {
+                    if (err) return res.send(500);
+
+                    original.getDirPath(function (err, originPath) {
+                        if (err) return res.send(500);
+                        dup.getDirPath(function (err, dupPath) {
+                            if (err) return res.send(500);
+
+                            dup.getChildrenTree(function (err, childrens) {
+                                if (err) return res.send(500);
+
+                                var dupTree;
+                                if (!childrens.length) {
+                                    dupTree = dup;
+                                } else {
+                                    dupTree = {
+                                        _id: dup._id,
+                                        name: dup.name,
+                                        type: dup.type,
+                                        parent: dup.parent,
+                                        children: childrens
+                                    }
+                                }
+
+                                fs.copy(originPath, dupPath, function (err) {
+                                    if (err) return res.send(500);
+                                    res.send(201, {
+                                        data: dupTree
+                                    });
+                                });
+                            });
+                        });
+                    });
+                });
+            });
+        });
+    });
+
 	/*
 	 * 	GET
 	 */
@@ -81,41 +168,6 @@ module.exports = function (app) {
                     data: [rootDir]
                 });
             });
-			/*var fn = [];
-			items.forEach( function (it) {
-				fn.push(function (callback) {
-					it.getChildrenTree({fields: 'id type name meta lastModified owner'}, function (err, childrens) {
-						if (err) return callback(err);
-
-						var dir = {
-							_id: it._id,
-							name: it.name,
-							type: it.type,
-							meta: it.meta,
-                            lastModified: it.lastModified,
-                            owner: it.owner,
-							children: childrens
-						}
-						callback(null, dir);
-					})
-				});
-			});
-
-			async.parallel(fn, function (err, results) {
-				if (err) return res.send(500);
-
-                Utils.sortRecv(results);
-				var rootDir = {
-					_id: '-1',
-					type: 'folder',
-					name: 'My Cubbyhole',
-					children: results
-				}
-				res.json({
-					success: true,
-					data: [rootDir]
-				});
-			});*/
 		});
 	});
 
@@ -222,4 +274,10 @@ module.exports = function (app) {
             });
         });
 	});
+
+
+    /*
+     *  Utils
+     */
+
 };

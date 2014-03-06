@@ -2,7 +2,8 @@ var mongoose = require('mongoose'),
 	tree = require('mongoose-path-tree'),
 	cfg = require('../config'),
 	fs = require('fs-extra'),
-    path = require('path');
+    path = require('path'),
+    async = require('async');
 
 var itemSchema = new mongoose.Schema({
 	name: 		    String,
@@ -11,7 +12,8 @@ var itemSchema = new mongoose.Schema({
 	owner: 		    {type: mongoose.Schema.ObjectId, ref: 'User'},
 	meta: 		    mongoose.Schema.Types.Mixed,                    // @type, @size
     lastModified:   {type: Date, default: Date.now},
-    root:           Boolean
+    root:           Boolean,
+    isCopy:         Boolean
 });
 
 itemSchema.plugin(tree);
@@ -22,7 +24,7 @@ itemSchema.plugin(tree);
 itemSchema.pre('save', function (next) {
 	var that = this;
 
-	if (!this.isNew) return next();
+	if (!this.isNew || this.isCopy) return next();
 
     // new Item, make dir or write file
     this.getDirPath(function (err, path) {
@@ -72,6 +74,28 @@ itemSchema.methods.getDirPath = function (callback) {
         callback(null, path.join(fullPath, that.name));
     });
 };
+
+itemSchema.statics.duplicateTree = function (args, callback) {
+    duplicate({original: args.original, newParent: args.newParent}, function (err, dupParent) {
+        args.original.getChildrenTree(function (err, childrens) {
+            if (err) return callback(err);
+
+            if (!childrens.length) return callback();
+
+            var cArgs = [];
+            childrens.forEach(function (c) {
+                cArgs.push({original: new itemSchema(c), newParent: dupParent._id});
+            });
+
+            async.map(cArgs, duplicateTree, function (err) {
+                if (err) return callback(err);
+                callback(null, dupParent);
+            });
+        });
+    });
+};
+
+var duplicateTree = itemSchema.statics.duplicateTree;
 
 /*
  *	Statics
