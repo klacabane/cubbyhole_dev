@@ -149,6 +149,14 @@ var Utils = {
             }
             return 'Document';
         }
+    },
+    isMember: function (members, user) {
+        var lookup = {};
+        for (var i = 0, length = members.length; i < length; i++) {
+            lookup[members[i]._id.toString()] = members[i];
+        }
+
+        return lookup[user] !== undefined;
     }
 };
 

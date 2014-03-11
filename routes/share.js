@@ -33,7 +33,7 @@ module.exports = function (app) {
                                 if (err) return cb(err);
                                 if (!u || u._id.toString() === from) return cb();
 
-                                ItemShare.findOne({$or: [{from: u._id}, {with: u._id}], item: itemId}, function (err, ishare) {
+                                ItemShare.findOne({$or: [{'owner._id': u._id}, {'with': u._id}], item: itemId}, function (err, ishare) {
                                     if (err) return cb(err);
                                     if (ishare) return cb();
 
@@ -57,6 +57,7 @@ module.exports = function (app) {
                 item = results.item;
             results.recipients.forEach(function (recip) {
                 if (recip) {
+                    // Persist a notification and send an email to the members
                     notesFn.push(function (callback) {
                         new ItemShare({item: itemId, with: recip._id, owner: {_id: item.owner._id, email: item.owner.mail}, permissions: recip.permissions, public: isPublic})
                             .save(function (err, itemShare) {
@@ -92,12 +93,25 @@ module.exports = function (app) {
 
             async.parallel(notesFn, function (err, itemShares) {
                 if (err) return res.send(500);
-                if (itemShares.length > 0) {
-                    item.isShared = true;
-                    item.save();
-                }
-                res.send(201, {
-                    data: itemShares
+                if (!itemShares.length) return res.send(422); // No valid member
+
+                item.isShared = true;
+                item.save(function (err) {
+                    itemShares[0].formatWithMembers(function (err, obj) {
+                        if (err) return res.send(500);
+
+                        item.getDirPath(function (err, path) {
+                            if (err) return cb(err);
+
+                            var p = path.split('/');
+                            p.splice(0, 2, 'My Cubbyhole');
+                            obj.path = p.join(',');
+
+                            res.send(201, {
+                                data: obj
+                            });
+                        });
+                    });
                 });
             });
         });
@@ -145,11 +159,13 @@ module.exports = function (app) {
                             s.formatWithMembers(function (err, obj) {
                                 if (err) return cb(err);
 
+                                // Shared folders are at the rootfolder of the participants
                                 if (s.owner._id != user)
                                     cb(null, obj);
                                 else
                                     s.item.getDirPath(function (err, path) {
                                         if (err) return cb(err);
+
                                         var p = path.split('/');
                                         p.splice(0, 2, 'My Cubbyhole');
                                         obj.path = p.join(',');
@@ -174,20 +190,74 @@ module.exports = function (app) {
      * DELETE
      */
     app.delete('/share/:id', mw.checkAuth, mw.validateId, function (req, res) {
+        var itemId = req.params.id;
+        ItemShare.findOne({item: itemId}, function (err, ishare) {
+            if (err) return res.send(500);
+            if (!ishare) return res.send(404);
 
+            ishare.formatWithMembers(function (err, obj) {
+                if (err) return res.send(500);
+
+                var user = req.user;
+                async.parallel([
+                    function (cb) {
+                        if (user != obj.owner._id) return cb();
+
+                        // User is the owner,
+                        // delete all sharing with this item
+                        // and set isShared to false
+                        var fn = [];
+                        obj.members.forEach(function (member) {
+                            fn.push(function (callback) {
+                                ItemShare.findOne({item: itemId, with: member._id}, function (err, mshare) {
+                                    if (err) return callback(err);
+                                    mshare.remove(callback);
+                                });
+                            });
+                        });
+                        async.parallel(fn, function (err) {
+                            if (err) return cb(err);
+
+                            Item.findByIdAndUpdate(itemId, {isShared: false}, cb);
+                        });
+                    },
+                    function (cb) {
+                        if (!Utils.isMember(obj.members, user)) return cb();
+
+                        // User is a member,
+                        // delete his sharing
+                        // and set isShared to false if he was the only participant
+                        ItemShare.findOne({item: itemId, with: user}, function (err, ushare) {
+                            if (err) return cb(err);
+
+                            ushare.remove(function (err) {
+                                if (err) return cb(err);
+
+                                if (obj.members.length > 1)
+                                    cb();
+                                else
+                                    Item.findByIdAndUpdate(itemId, {isShared: false}, cb);
+                            });
+                        });
+                    }
+                ], function (err) {
+                    if (err) return res.send(500);
+                    res.send(200);
+                });
+            });
+        });
     });
 
     /*
      * PUT
      */
     app.put('/share/:id', mw.checkAuth, mw.validateId, function (req, res) {
-        ItemShare.findOne({_id: req.params.id}, function (err, itemShare) {
+        ItemShare.findOne({item: req.params.id, with: req.user}, function (err, ishare) {
             if (err) return res.send(500);
-            if (!itemShare) return res.send(404);
-            if (req.user !== itemShare.with.toString()) return res.send(403);
+            if (!ishare) return res.send(404);
 
-            itemShare.accepted = true;
-            itemShare.save(function (err) {
+            ishare.accepted = true;
+            ishare.save(function (err) {
                 if (err) return res.send(500);
                 res.send(200);
             });

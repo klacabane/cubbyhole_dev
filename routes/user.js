@@ -1,6 +1,5 @@
 var User = require('../models/User'),
 	Item = require('../models/Item'),
-	async = require('async'),
 	mw = require('../tools/middlewares');
 
 module.exports = function (app) {
