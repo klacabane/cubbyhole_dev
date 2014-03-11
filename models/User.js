@@ -1,6 +1,7 @@
 var mongoose = require('mongoose'),
 	UserPlan = require('../models/UserPlan'),
     Item = require('../models/Item'),
+    ItemShare = require('../models/ItemShare'),
 	async = require('async'),
 	bcrypt = require('bcrypt');
 
@@ -37,7 +38,7 @@ var userSchema = new mongoose.Schema({
  					that.hashPw(cb);
  				},
  				function (cb) {
-                    new Item({root: true, name: that._id, type: 'folder', owner: that._id})
+                    new Item({isRoot: true, name: that._id, type: 'folder', owner: that._id})
                         .save(cb);
  				}], next);
  		}
@@ -47,7 +48,6 @@ var userSchema = new mongoose.Schema({
 *	[ Methods ]
 */	
 	// updatePlan
-	// @param planId: number
 	userSchema.methods.updatePlan = function (planId, callback) {
 		var that = this;
 		
@@ -82,5 +82,12 @@ var userSchema = new mongoose.Schema({
 			cb(null, match);
 		});
 	};
+
+    /*
+     *  [ Statics ]
+     */
+    userSchema.statics.isAuthorized = function (args, callback) {
+
+    };
 
 module.exports = mongoose.model('User', userSchema);

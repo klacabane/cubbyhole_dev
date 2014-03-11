@@ -3,7 +3,8 @@ var mongoose = require('mongoose'),
 	cfg = require('../config'),
 	fs = require('fs-extra'),
     path = require('path'),
-    async = require('async');
+    async = require('async'),
+    Utils = require('../tools/utils');
 
 var itemSchema = new mongoose.Schema({
 	name: 		    String,
@@ -12,8 +13,9 @@ var itemSchema = new mongoose.Schema({
 	owner: 		    {type: mongoose.Schema.ObjectId, ref: 'User'},
 	meta: 		    mongoose.Schema.Types.Mixed,                    // @type, @size
     lastModified:   {type: Date, default: Date.now},
-    root:           Boolean,
-    isCopy:         Boolean
+    isRoot:         Boolean,
+    isCopy:         Boolean,
+    isShared:       {type: Boolean, default: false}
 });
 
 itemSchema.plugin(tree);
@@ -62,7 +64,7 @@ itemSchema.methods.getDirPath = function (callback) {
     var that = this,
         fullPath = cfg.storage.dir;
 
-    if (this.root)
+    if (this.isRoot)
         return callback(null, path.join(cfg.storage.dir, that.owner.toString()));
 
     this.getAncestors(function (err, items) {
@@ -75,34 +77,56 @@ itemSchema.methods.getDirPath = function (callback) {
     });
 };
 
-itemSchema.statics.duplicateTree = function (args, callback) {
-    duplicate({original: args.original, newParent: args.newParent}, function (err, dupParent) {
-        args.original.getChildrenTree(function (err, childrens) {
+itemSchema.methods.duplicate = function (parent, callback) {
+    var that = this;
+    this.model('Item').findOne({name: this.name, parent: parent, type: this.type, owner: this.owner}, function (err, existing) {
+        if (err) return callback(err);
+        var name = (existing) ? Utils.rename(that.name) : that.name;
+
+        new that.constructor({
+            name: name,
+            owner: that.owner,
+            isCopy: true,
+            type: that.type,
+            parent: parent,
+            meta: that.meta
+        }).save(callback);
+    });
+};
+
+itemSchema.methods.duplicateTree = function (parent, callback) {
+    var that = this;
+
+    this.duplicate(parent, function (err, dupl) {
+        if (err) return callback(err);
+        if (that.type === 'file') return callback(null, dupl);
+
+        that.getChildrenTree(function (err, childrens) {
             if (err) return callback(err);
+            if (!childrens.length) return callback(null, dupl);
 
-            if (!childrens.length) return callback();
-
-            var cArgs = [];
+            var fn = [];
             childrens.forEach(function (c) {
-                cArgs.push({original: new itemSchema(c), newParent: dupParent._id});
+                fn.push(function (cb) {
+                    new that.constructor(c)
+                        .duplicateTree(dupl._id, cb);
+                });
             });
 
-            async.map(cArgs, duplicateTree, function (err) {
+            async.parallel(fn, function (err) {
                 if (err) return callback(err);
-                callback(null, dupParent);
+
+                callback(null, dupl);
             });
         });
     });
 };
 
-var duplicateTree = itemSchema.statics.duplicateTree;
-
 /*
  *	Statics
  */
 itemSchema.statics.parentExists = function (id, cb) {
-	if (!id || id === '-1') return cb(null, true);  // remove
-	if (!id.match(/^[0-9a-fA-F]{24}$/)) return cb(null, false);
+	if (!id || !id.match(/^[0-9a-fA-F]{24}$/)) return cb(null, false);
 
 	this.findOne({_id: id}, function (err, item) {
 		if (err) return cb(err);

@@ -12,11 +12,8 @@ module.exports = {
 	validateId: function (req, res, next) {
 		var id = req.params.id || req.body.id;
 
-		if (!id.match(/^[0-9a-fA-F]{24}$/))
-			return res.send(400, {
-				success: false,
-				error: 'Invalid parameter.'
-			});
+		if (!id || !id.match(/^[0-9a-fA-F]{24}$/)) return res.send(400);
+
 		next();
 	},
     setHeaders: function (req, res, next) {

@@ -128,7 +128,7 @@ var Utils = {
 
         childrens.sort(Utils._sortByName);
         for (var i = 0, length = childrens.length; i < length; i++) {
-            if (!childrens[i].children.length) continue;
+            if (!childrens[i].children) continue;
             Utils.sortRecv(childrens[i].children);
         }
     },

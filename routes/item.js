@@ -6,12 +6,12 @@ var Item = require('../models/Item'),
 	Utils = require('../tools/utils'),
 	mw = require('../tools/middlewares'),
     admZip = require('adm-zip'),
-    fs = require('fs-extra'),
-    ObjectId = require('mongoose').Types.ObjectId;
+    fs = require('fs-extra');
 
 module.exports = function (app) {
 	/*
 	 *	POST
+	 *  Create new Item
 	 */
 	app.post('/item', mw.checkAuth, function (req, res) {
 		var type = req.body.type,
@@ -50,94 +50,75 @@ module.exports = function (app) {
 		});
 	});
 
-    var duplicate = function (args, callback) {
-        var name = args.original.name;
-        Item.findOne({name: args.original.name, type: args.original.type, parent: args.newParent}, function (err, exists) {
-            if (exists) name = Utils.rename(name);
-
-            new Item({
-                name: name,
-                owner: args.original.owner,
-                isCopy: true,
-                type: args.original.type,
-                parent: args.newParent,
-                meta: args.original.meta
-            }).save(callback);
-        });
-    };
-
-    var duplicateTree = function (args, callback) {
-        args.original.getChildrenTree(function (err, childrens) {
-            duplicate({original: args.original, newParent: args.newParent}, function (err, dupParent) {
-                if (err) return callback(err);
-                if (!childrens.length) return callback(null, dupParent);
-
-                var cArgs = [];
-                childrens.forEach(function (c) {
-                    cArgs.push({original: new Item(c), newParent: dupParent._id});
-                });
-
-                async.map(cArgs, duplicateTree, function (err) {
-                    if (err) return callback(err);
-
-                    callback(null, dupParent);
-                });
-            });
-        });
-    };
-
-    // PASTE
+    /*
+     *	POST
+     *  Create copy of an item
+     *  Needs ownership validation
+     */
     app.post('/item/:id', mw.checkAuth, mw.validateId, function (req, res) {
-        var parent = req.body.parent;
+        var parent = req.body.parent,
+            itemId = req.params.id;
 
-        Item.parentExists(parent, function (err, exists) {
-            if (err) return res.send(500);
-            if (!exists) return res.send(422);
+        async.waterfall([
+            function (cb) {
+                Item.parentExists(parent, cb);
+            },
+            function (exists, cb) {
+                if (!exists) return cb(true, 422);
 
-            Item.findOne({_id: req.params.id}, function (err, original) {
-                if (err) return res.send(500);
-                if (!original) return res.send(404);
+                Item.findOne({_id: itemId}, function (err, original) {
+                    if (err) return cb(err);
+                    if (!original) return cb(true, 404);
 
-                duplicateTree({original: original, newParent: parent}, function (err, dup) {
+                    original.duplicateTree(parent, function (err, dupl) {
+                        if (err) return cb(err);
+                        cb(null, original, dupl);
+                    });
+                });
+            },
+            function (original, dupl, cb) {
+                original.getDirPath(function (err, originPath) {
+                    if (err) return cb(err);
+                    dupl.getDirPath(function (err, duplPath) {
+                        if (err) return cb(err);
+                        cb(null, {dupl: dupl, originPath: originPath, duplPath: duplPath});
+                    });
+                });
+            }
+        ],
+        function (err, results) {
+            if (err) return res.send(originPath || 500);
+
+            results.dupl
+                .getChildrenTree(function (err, childrens) {
                     if (err) return res.send(500);
 
-                    original.getDirPath(function (err, originPath) {
+                    var dupTree;
+                    if (!childrens.length) {
+                        dupTree = results.dupl;
+                    } else {
+                        dupTree = {
+                            _id: results.dupl._id,
+                            name: results.dupl.name,
+                            type: results.dupl.type,
+                            parent: results.dupl.parent,
+                            children: childrens
+                        }
+                    }
+
+                    fs.copy(results.originPath, results.duplPath, function (err) {
                         if (err) return res.send(500);
-                        dup.getDirPath(function (err, dupPath) {
-                            if (err) return res.send(500);
-
-                            dup.getChildrenTree(function (err, childrens) {
-                                if (err) return res.send(500);
-
-                                var dupTree;
-                                if (!childrens.length) {
-                                    dupTree = dup;
-                                } else {
-                                    dupTree = {
-                                        _id: dup._id,
-                                        name: dup.name,
-                                        type: dup.type,
-                                        parent: dup.parent,
-                                        children: childrens
-                                    }
-                                }
-
-                                fs.copy(originPath, dupPath, function (err) {
-                                    if (err) return res.send(500);
-                                    res.send(201, {
-                                        data: dupTree
-                                    });
-                                });
-                            });
+                        res.send(201, {
+                            data: dupTree
                         });
                     });
                 });
-            });
         });
     });
 
 	/*
 	 * 	GET
+	 * 	Return single item
 	 */
 	app.get('/item/:id', mw.checkAuth, mw.validateId, function (req, res) {
 		Item.findOne({_id: req.params.id}, function (err, item) {
@@ -150,27 +131,72 @@ module.exports = function (app) {
 		});
 	});
 
+    /*
+     *	GET
+     *  Return all items of authenticated user
+     */
 	app.get('/item', mw.checkAuth, function (req, res) {
-		Item.findOne({owner: req.user, root: true}, function (err, rootFolder) {
-            if (err) return res.send(500);
-            rootFolder.getChildrenTree({fields: 'id type name meta lastModified owner'}, function (err, childrens) {
-                if (err) res.send(500);
+        var user = req.user;
+        async.parallel({
+            root: function (cb) {
+                Item.findOne({owner: user, isRoot: true}, function (err, rootFolder) {
+                    if (err) return cb(err);
+                    rootFolder.getChildrenTree(function (err, childrens) {
+                        if (err) return cb(err);
 
-                Utils.sortRecv(childrens);
-                var rootDir = {
-                    _id: rootFolder._id,
-                    type: 'folder',
-                    name: 'My Cubbyhole',
-                    children: childrens
-                };
-                res.json({
-                    success: true,
-                    data: [rootDir]
+                        cb(null, {id: rootFolder._id, childrens: childrens});
+                    });
                 });
+            },
+            shares: function (cb) {
+                ItemShare.find({with: user, accepted: true, public: false})
+                    .lean()
+                    .select('item')
+                    .populate('item')
+                    .exec(function (err, shares) {
+                        if (err) return cb(err);
+
+                        var fn = [];
+                        shares.forEach(function (s) {
+                            fn.push(function (cb) {
+                                new Item(s.item)
+                                    .getChildrenTree(function (err, childrens) {
+                                        if (err) return cb(err);
+
+                                        s.item.children = childrens;
+                                        cb(null, s.item);
+                                    });
+                            });
+                        });
+
+                        async.parallel(fn, cb);
+                    });
+            }
+        },
+        function (err, results) {
+            if (err) return res.send(500);
+
+            var childrens = results.root.childrens
+                .concat(results.shares);
+
+            Utils.sortRecv(childrens);
+            var rootDir = {
+                _id: results.root.id,
+                type: 'folder',
+                name: 'My Cubbyhole',
+                children: childrens
+            };
+            res.json({
+                success: true,
+                data: [rootDir]
             });
-		});
+        });
 	});
 
+    /*
+     *  GET
+     *  Returns resource ( file or folder.zip ) buffer
+     */
 	app.get('/item/:id/download/:token', mw.checkAuth, mw.validateId, function (req, res) {
 		Item.findOne({_id: req.params.id}, function (err, item) {
 			if (err) return res.send(500);
@@ -207,12 +233,12 @@ module.exports = function (app) {
 
 	/* 
 	 * 	DELETE
+	 * 	Removes resources and childrens if any
 	 */
 	app.delete('/item/:id', mw.checkAuth, mw.validateId, function (req, res) {
 		Item.findOne({_id: req.params.id}, function (err, item) {
 			if (err) return res.send(500);
 			if (!item) return res.send(404);
-			// if (req.user != item.owner) return res.send(401); -- Shared folders can have rw
 
             item.remove(function (err) {
                 if (err) return res.send(500);
@@ -224,6 +250,7 @@ module.exports = function (app) {
 
 	/*
 	 *	PUT
+	 *  Update resource name or parent
 	 */
 	app.put('/item/:id', mw.checkAuth, mw.validateId, function (req, res) {
 		Item.findOne({_id: req.params.id}, function (err, item) {
@@ -240,7 +267,7 @@ module.exports = function (app) {
                 },
                 function (exists, cb) {
                     if (!exists) return cb(true, 422); //hm
-                    Item.findOne({name: name, parent: parent, owner: item.owner}, cb);
+                    Item.findOne({name: name, parent: parent, type: item.type, owner: item.owner}, cb);
                 },
                 function (i, cb) {
                     if (i) name = Utils.rename(name);
@@ -270,14 +297,9 @@ module.exports = function (app) {
                             });
                         });
                     });
-                })
+                });
             });
         });
 	});
-
-
-    /*
-     *  Utils
-     */
 
 };
