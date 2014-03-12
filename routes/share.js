@@ -4,7 +4,9 @@ var ItemShare = require('../models/ItemShare'),
     Notification = require('../models/Notification'),
     mw = require('../tools/middlewares'),
     Utils = require('../tools/utils'),
-    async = require('async');
+    async = require('async'),
+    path = require('path');
+
 
 module.exports = function (app) {
     /*
@@ -100,10 +102,10 @@ module.exports = function (app) {
                     itemShares[0].formatWithMembers(function (err, obj) {
                         if (err) return res.send(500);
 
-                        item.getDirPath(function (err, path) {
+                        item.getDirPath(function (err, dirPath) {
                             if (err) return cb(err);
 
-                            var p = path.split('/');
+                            var p = dirPath.split(path.sep);
                             p.splice(0, 2, 'My Cubbyhole');
                             obj.path = p.join(',');
 
@@ -163,10 +165,10 @@ module.exports = function (app) {
                                 if (s.owner._id != user)
                                     cb(null, obj);
                                 else
-                                    s.item.getDirPath(function (err, path) {
+                                    s.item.getDirPath(function (err, dirPath) {
                                         if (err) return cb(err);
 
-                                        var p = path.split('/');
+                                        var p = dirPath.split(path.sep);
                                         p.splice(0, 2, 'My Cubbyhole');
                                         obj.path = p.join(',');
 
