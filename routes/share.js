@@ -13,8 +13,8 @@ module.exports = function (app) {
      * POST
      *
      */
-    app.post('/share', mw.checkAuth, mw.validateId, function (req, res) {
-        var itemId = req.body.id,
+    app.post('/share/:id', mw.checkAuth, mw.validateId, function (req, res) {
+        var itemId = req.params.id,
             receivers = req.body.with,
             from = req.user,
             isPublic = req.isPublic == 'true';
@@ -208,7 +208,20 @@ module.exports = function (app) {
                         // User is the owner,
                         // delete all sharing with this item
                         // and set isShared to false
-                        var fn = [];
+                        async.each(
+                            obj.members,
+                            function (member, callback) {
+                                ItemShare.findOne({item: itemId, with: member._id}, function (err, mshare) {
+                                    if (err) return callback(err);
+                                    mshare.remove(callback);
+                                });
+                            },
+                            function (err) {
+                                if (err) return cb(err);
+
+                                Item.findByIdAndUpdate(itemId, {isShared: false}, cb);
+                            });
+                        /*var fn = [];
                         obj.members.forEach(function (member) {
                             fn.push(function (callback) {
                                 ItemShare.findOne({item: itemId, with: member._id}, function (err, mshare) {
@@ -221,7 +234,7 @@ module.exports = function (app) {
                             if (err) return cb(err);
 
                             Item.findByIdAndUpdate(itemId, {isShared: false}, cb);
-                        });
+                        });*/
                     },
                     function (cb) {
                         if (!Utils.isMember(obj.members, user)) return cb();

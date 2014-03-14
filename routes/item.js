@@ -151,7 +151,7 @@ module.exports = function (app) {
             shares: function (cb) {
                 ItemShare.find({with: user, accepted: true, public: false})
                     .lean()
-                    .select('item')
+                    .select('item permissions')
                     .populate('item')
                     .exec(function (err, shares) {
                         if (err) return cb(err);
@@ -164,6 +164,7 @@ module.exports = function (app) {
                                         if (err) return cb(err);
 
                                         s.item.children = childrens;
+                                        s.item.permissions = s.permissions;
                                         cb(null, s.item);
                                     });
                             });

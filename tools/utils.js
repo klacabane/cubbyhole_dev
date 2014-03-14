@@ -3,6 +3,7 @@ var	jwt = require('jwt-simple'),
 	async = require('async'),
 	fs = require('fs'),
 	nodemailer = require('nodemailer'),
+    path = require('path'),
 	Plan = require('../models/Plan'),
 	Bandwidth = require('../models/Bandwidth');
 
@@ -157,6 +158,52 @@ var Utils = {
         }
 
         return lookup[user] !== undefined;
+    },
+    insertAtParentPath: function (childrens, item) {
+        var subChildrens = [],
+            inserted = false;
+
+        if (!childrens.length) return;
+
+        for (var i = 0, length = childrens.length; i < length; i++) {
+            var c = childrens[i];
+            if (c.type == 'folder') {
+                if (c._id.toString() == item.parent.toString()) {
+                    c.children.push(item);
+                    inserted = true;
+                    break;
+                } else {
+                    subChildrens = subChildrens.concat(c.children);
+                }
+            }
+        }
+        if (!inserted)
+            Utils.insertAtParentPath(subChildrens, item);
+    },
+    getSize: function (dirPath, callback) {
+        fs.stat(dirPath, function (err, stats) {
+            if (err) return callback(err);
+
+            var total = stats.size;
+
+            if (!stats.isDirectory())
+                callback(null, total);
+            else
+                fs.readdir(dirPath, function (err, items) {
+                    async.each(
+                        items,
+                        function (item, cb) {
+                            Utils.getSize(path.join(dirPath, item), function (err, size) {
+                                if (err) return cb(err);
+                                total += size;
+                                cb();
+                            });
+                        },
+                        function (err) {
+                            callback(err, total);
+                        });
+                });
+        });
     }
 };
 
