@@ -39,7 +39,7 @@ module.exports = function (app) {
                                     if (err) return cb(err);
                                     if (ishare) return cb();
 
-                                    u.permissions = r.permission;
+                                    u.permissions = r.permissions;
                                     cb(null, u);
                                 });
                             });
@@ -192,7 +192,8 @@ module.exports = function (app) {
      * DELETE
      */
     app.delete('/share/:id', mw.checkAuth, mw.validateId, function (req, res) {
-        var itemId = req.params.id;
+        var itemId = req.params.id,
+            member = req.body.member;
         ItemShare.findOne({item: itemId}, function (err, ishare) {
             if (err) return res.send(500);
             if (!ishare) return res.send(404);
@@ -204,14 +205,17 @@ module.exports = function (app) {
                 async.parallel([
                     function (cb) {
                         if (user != obj.owner._id) return cb();
+                        var members = obj.members;
 
                         // User is the owner,
                         // delete all sharing with this item
                         // and set isShared to false
+                        if (member) members = [].push({_id: member});
+
                         async.each(
-                            obj.members,
-                            function (member, callback) {
-                                ItemShare.findOne({item: itemId, with: member._id}, function (err, mshare) {
+                            members,
+                            function (m, callback) {
+                                ItemShare.findOne({item: itemId, with: m._id}, function (err, mshare) {
                                     if (err) return callback(err);
                                     mshare.remove(callback);
                                 });
@@ -219,7 +223,10 @@ module.exports = function (app) {
                             function (err) {
                                 if (err) return cb(err);
 
-                                Item.findByIdAndUpdate(itemId, {isShared: false}, cb);
+                                if (obj.members.length > 1)
+                                    cb()
+                                else
+                                    Item.findByIdAndUpdate(itemId, {isShared: false}, cb);
                             });
                         /*var fn = [];
                         obj.members.forEach(function (member) {
