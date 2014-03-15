@@ -17,7 +17,7 @@ module.exports = function (app) {
 
     	if (!email || !pw) return res.send(400);
 
-    	User.findOne({ mail: email }, function (err, user) {
+    	User.findOne({ email: email }, function (err, user) {
 			if (err) return res.send(500);
 			if (!user) return res.send(404);
 
@@ -30,7 +30,7 @@ module.exports = function (app) {
 				res.send(200, {
 					profile: {
 						id: user._id,
-						email: user.mail,
+						email: user.email,
 						plan: user.currentPlan,
 						token: t
 					}
@@ -46,11 +46,11 @@ module.exports = function (app) {
 
 		if (!email || !pw) return res.send(400);
 
-		User.findOne({ mail: email }, function (err, user) {
+		User.findOne({ email: email }, function (err, user) {
 			if (err) return res.send(500);
 			if (user) return res.send(422);
 			
-			new User({ mail: email, password: pw })
+			new User({ email: email, password: pw })
 				.save( function (err, u) {
 					if (err) return res.send(500);
 					
@@ -70,7 +70,7 @@ module.exports = function (app) {
 
     	User.findOneAndUpdate({_id: user}, {$set: {verified: true}}, function (err, user) {
     		if (err) return res.render('index', {locals: {error: err}});
-    		res.redirect('http://localhost:8000/index.html?email=' + user.mail);
+    		res.redirect('http://localhost:8000/index.html?email=' + user.email);
     	});
     });
 

@@ -149,25 +149,28 @@ module.exports = function (app) {
                 });
             },
             shares: function (cb) {
-                ItemShare.find({with: user, accepted: true, public: false})
-                    .lean()
-                    .select('item permissions')
+                ItemShare.find({'members._id': user})
+                    .select('item members')
                     .populate('item')
                     .exec(function (err, shares) {
                         if (err) return cb(err);
 
                         var fn = [];
                         shares.forEach(function (s) {
-                            fn.push(function (cb) {
-                                new Item(s.item)
-                                    .getChildrenTree(function (err, childrens) {
-                                        if (err) return cb(err);
+                            var membership = s.getMembership(user);
 
-                                        s.item.children = childrens;
-                                        s.item.permissions = s.permissions;
-                                        cb(null, s.item);
-                                    });
-                            });
+                            if (membership.accepted)
+                                fn.push(function (cb) {
+                                    s.item
+                                        .getChildrenTree(function (err, childrens) {
+                                            if (err) return cb(err);
+
+                                            var obj = s.item.toObject();
+                                            obj.children = childrens;
+                                            obj.permissions = membership.permissions;
+                                            cb(null, obj);
+                                        });
+                                });
                         });
 
                         async.parallel(fn, cb);

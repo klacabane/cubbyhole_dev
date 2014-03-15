@@ -21,93 +21,132 @@ module.exports = function (app) {
 
         async.parallel({
             item: function (callback) {
-                Item.findOne({_id: itemId})
-                    .populate('owner')
-                    .exec(callback);
+                Item.findOne({_id: itemId}, callback);
             },
             recipients: function (callback) {
-                var fn = [];
-                receivers.forEach(function (r) {
-                    fn.push(function (cb) {
-                        User.findOne({mail: r.email})
-                            .lean()
-                            .exec(function (err, u) {
-                                if (err) return cb(err);
-                                if (!u || u._id.toString() === from) return cb();
+                ItemShare.findOne({item: itemId})
+                    .populate('owner')
+                    .exec(function (err, ishare) {
+                        if (err) return callback(err);
 
-                                ItemShare.findOne({$or: [{'owner._id': u._id}, {'with': u._id}], item: itemId}, function (err, ishare) {
-                                    if (err) return cb(err);
-                                    if (ishare) return cb();
+                        var fn = [];
+                        // Validate receivers
+                        receivers.forEach(function (r) {
+                            fn.push(function (cb) {
+                                User.findOne({email: r.email})
+                                    .lean()
+                                    .exec(function (err, u) {
+                                        if (err || !u) return cb(err);
+                                        if (ishare && (u._id === ishare.owner._id
+                                            || ishare.isMember(u._id))) return cb(); // Membership already exists
 
-                                    u.permissions = r.permissions;
-                                    cb(null, u);
-                                });
+                                        // Receiver is a ch User and is not sharing this item yet
+                                        // Create new membership
+                                        var member = {
+                                            _id: u._id,
+                                            email: u.email,
+                                            accepted: true,
+                                            permissions: r.permissions
+                                        };
+                                        cb(null, member);
+                                    });
                             });
-                    });
-                });
+                        });
 
-                async.parallel(fn, callback);
+                        async.parallel(fn, function (err, members) {
+                            callback(err, {ishare: ishare, members: members});
+                        });
+                    });
             },
             from: function (callback) {
-                User.findOne({_id: from}, callback);
+                User.findOne({_id: from}, function (err, from) {
+                    if (err) return callback(err);
+                    callback(null, {
+                        _id: from._id,
+                        email: from.email
+                    });
+                });
             }
         }, function (err, results) {
             if (err) return res.send(500);
-            if (!results.item || !results.recipients) return res.send(404);
+            if (!results.item) return res.send(404);
 
-            var notesFn = [],
+            var members = Utils.cleanArray(results.recipients.members),
                 item = results.item;
-            results.recipients.forEach(function (recip) {
-                if (recip) {
-                    // Persist a notification and send an email to the members
-                    notesFn.push(function (callback) {
-                        new ItemShare({item: itemId, with: recip._id, owner: {_id: item.owner._id, email: item.owner.mail}, permissions: recip.permissions, public: isPublic})
-                            .save(function (err, itemShare) {
-                                if (err) return callback(err);
 
-                                async.parallel([
-                                    function (cb) {
-                                        new Notification({
-                                            type: 'S',
-                                            user: recip._id,
-                                            from: from,
-                                            item: {name: results.item.name, type: results.item.type},
-                                            share: itemShare._id
-                                        }).save(cb);
-                                    },
-                                    function (cb) {
-                                        var details = {
-                                            item: results.item,
-                                            from: results.from,
-                                            share: itemShare._id
-                                        };
+            // No valid members
+            if (!members.length) return res.send(422);
 
-                                        Utils.sendEmail(recip, details, cb);
-                                    }
-                                ], function (err) {
-                                    if (err) return callback(err);
-                                    callback(null, itemShare);
-                                });
+            // Create a notification
+            // and send mail to each participant
+            async.each(
+                members,
+                function (recip, callback) {
+                    async.parallel([
+                        function (cb) {
+                            new Notification({
+                                type: 'S',
+                                user: recip._id,
+                                from: results.from,
+                                item: {_id: item._id, name: item.name, type: item.type},
+                                share: item._id
+                            }).save(cb);
+                        },
+                        function (cb) {
+                            var details = {
+                                item: item,
+                                from: results.from,
+                                share: item._id
+                            };
+
+                            Utils.sendEmail(recip, details, cb);
+                        }
+                    ], callback);
+                },
+                function (err) {
+                    if (err) return res.send(500);
+
+                    var ishare = results.recipients.ishare;
+
+                    // Update sharing or create a new one
+                    async.series([
+                        function (cb) {
+                            if (!ishare) return cb();
+                            if (from != ishare.owner._id &&
+                                ishare.getMembership(from).permissions === 0) return cb(403);
+
+                            // Update existing sharing members
+                            ishare.members = ishare.members.concat(members);
+                            ishare.save(function (err, is) {
+                                cb(err, is);
                             });
-                    });
-                }
-            });
+                        }, function (cb) {
+                            if (ishare) return cb();
 
-            async.parallel(notesFn, function (err, itemShares) {
-                if (err) return res.send(500);
-                if (!itemShares.length) return res.send(422); // No valid member
-
-                item.isShared = true;
-                item.save(function (err) {
-                    itemShares[0].formatWithMembers(function (err, obj) {
-                        if (err) return res.send(500);
+                            // Update item.isShared property and
+                            // Create a new ItemShare
+                            item.isShared = true;
+                            item.save(function () {
+                                new ItemShare({item: item._id, owner: results.from, members: members})
+                                    .save(function (err, is) {
+                                        cb(err, is);
+                                    });
+                            });
+                        }
+                    ],
+                    function (err, result) {
+                        if (err) return res.send(typeof err === 'number' ? err : 500);
+                        var itemShare = Utils.cleanArray(result)[0];
 
                         item.getDirPath(function (err, dirPath) {
-                            if (err) return cb(err);
+                            if (err) return res.send(500);
 
-                            var p = dirPath.split(path.sep);
+                            var obj = itemShare.format(),
+                                p = dirPath.split(path.sep);
                             p.splice(0, 2, 'My Cubbyhole');
                             obj.path = p.join(',');
+                            obj._id = item._id;
+                            obj.name = item.name;
 
                             res.send(201, {
                                 data: obj
@@ -115,7 +154,6 @@ module.exports = function (app) {
                         });
                     });
                 });
-            });
         });
     });
 
@@ -146,45 +184,40 @@ module.exports = function (app) {
 
     app.get('/share', mw.checkAuth, function (req, res) {
         var user = req.user;
-        ItemShare.find({$or: [{'owner._id': user}, {'with': user}]})
+        ItemShare.find({$or: [{'owner._id': user}, {'members._id': user}]})
             .populate('item')
             .exec(function (err, shares) {
                 if (err) return res.send(500);
 
-                var fn = [],
-                    itemsId = [];
-                shares.forEach(function (s) {
-                    if (itemsId.indexOf(s.item.toString()) === -1) {    // hmmm
-                        itemsId.push(s.item.toString());
+                var results = [];
+                async.each(
+                    shares,
+                    function (s, callback) {
+                        var obj = s.format();
 
-                        fn.push(function (cb) {
-                            s.formatWithMembers(function (err, obj) {
-                                if (err) return cb(err);
+                        // Shared items are at the root folder of participants
+                        if (s.owner._id.toString() !== user) {
+                            results.push(obj);
+                            callback();
+                        } else {
+                            s.item.getDirPath(function (err, dirPath) {
+                                if (err) return callback(err);
 
-                                // Shared folders are at the rootfolder of the participants
-                                if (s.owner._id != user)
-                                    cb(null, obj);
-                                else
-                                    s.item.getDirPath(function (err, dirPath) {
-                                        if (err) return cb(err);
+                                var p = dirPath.split(path.sep);
+                                p.splice(0, 2, 'My Cubbyhole');
+                                obj.path = p.join(',');
 
-                                        var p = dirPath.split(path.sep);
-                                        p.splice(0, 2, 'My Cubbyhole');
-                                        obj.path = p.join(',');
-
-                                        cb(null, obj);
-                                    });
+                                results.push(obj);
+                                callback();
                             });
+                        }
+                    },
+                    function (err) {
+                        if (err) return res.send(500);
+                        res.send(200, {
+                            data: results
                         });
-                    }
-                });
-
-                async.parallel(fn, function (err, sharedItems) {
-                    if (err) return res.send(500);
-                    res.send(200, {
-                        data: sharedItems
                     });
-                });
             });
     });
 
@@ -195,78 +228,59 @@ module.exports = function (app) {
         var itemId = req.params.id,
             member = req.params.member;
         ItemShare.findOne({item: itemId}, function (err, ishare) {
-            if (err) return res.send(500);
-            if (!ishare) return res.send(404);
-
-            ishare.formatWithMembers(function (err, obj) {
                 if (err) return res.send(500);
+                if (!ishare) return res.send(404);
 
                 var user = req.user;
                 async.parallel([
                     function (cb) {
-                        if (user != obj.owner._id) return cb();
-                        var members = obj.members;
+                        if (user != ishare.owner._id) return cb();
 
-                        // User is the owner,
-                        // delete all sharing with this item
-                        // and set isShared to false
-
+                        // User is the owner
                         // if a member is given, only delete his membership
-                        if (member) members = [].push({_id: member});
-
-                        async.each(
-                            members,
-                            function (m, callback) {
-                                ItemShare.findOne({item: itemId, with: m._id}, function (err, mshare) {
-                                    if (err) return callback(err);
-                                    mshare.remove(callback);
-                                });
-                            },
-                            function (err) {
-                                if (err) return cb(err);
-
-                                if (obj.members.length > 1)
-                                    cb()
-                                else
-                                    Item.findByIdAndUpdate(itemId, {isShared: false}, cb);
-                         });
+                        if (member) {
+                            ishare.removeMember(member);
+                            ishare.save(cb);
+                        } else {
+                            ishare.remove(cb);
+                        }
                     },
                     function (cb) {
-                        if (!Utils.isMember(obj.members, user)) return cb();
+                        if (!ishare.isMember(user)) return cb();
 
                         // User is a member,
-                        // delete his sharing
-                        // and set isShared to false if he was the only participant
-                        ItemShare.findOne({item: itemId, with: user}, function (err, ushare) {
-                            if (err) return cb(err);
+                        // delete his membership
+                        ishare.removeMember(user);
+                        ishare.save(cb);
 
-                            ushare.remove(function (err) {
-                                if (err) return cb(err);
-
-                                if (obj.members.length > 1)
-                                    cb();
-                                else
-                                    Item.findByIdAndUpdate(itemId, {isShared: false}, cb);
-                            });
-                        });
                     }
                 ], function (err) {
                     if (err) return res.send(500);
                     res.send(200);
                 });
             });
-        });
     });
 
     /*
      * PUT
      */
     app.put('/share/:id', mw.checkAuth, mw.validateId, function (req, res) {
-        ItemShare.findOne({item: req.params.id, with: req.user}, function (err, ishare) {
+        var itemId = req.params.id,
+            member = req.body.member,
+            permissions = req.body.permissions;
+
+        ItemShare.findOne({item: itemId}, function (err, ishare) {
             if (err) return res.send(500);
             if (!ishare) return res.send(404);
 
-            ishare.accepted = true;
+            // Sharing Confirmation
+            if (!member)
+                ishare.getMembership(member)
+                    .accepted = true;
+            else    // Update member permissions
+                ishare.getMembership(member)
+                    .permissions = permissions;
+
             ishare.save(function (err) {
                 if (err) return res.send(500);
                 res.send(200);

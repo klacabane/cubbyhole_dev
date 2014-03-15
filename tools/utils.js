@@ -83,7 +83,7 @@ var Utils = {
             callback = callback || details,
             options = {
                 from: "Cubbyhole <noreply@cubbyhole.com>",
-                to: recipient.mail
+                to: recipient.email
             };
 
         var smtpTransport = nodemailer.createTransport("SMTP", {
@@ -105,10 +105,10 @@ var Utils = {
             options.html = "<a href='http://localhost:3000/auth/confirm/" + token + "''>Confirm your mail</a>";
         } else {
             if (details.hasOwnProperty('share')) {
-                options.subject = details.from.mail + ' wants to share the ' + details.item.type + ' ' + details.item.name + ' with you.';
+                options.subject = details.from.email + ' wants to share the ' + details.item.type + ' ' + details.item.name + ' with you.';
                 options.html = "<a href='http://localhost:8000/share/" + details.share + "''>View the " + details.item.type + "</a>";
             } else { // Delete
-                options.subject = details.from.mail + ' removed the ' + details.item.type + ' ' + details.item.name + '.';
+                options.subject = details.from.email + ' removed the ' + details.item.type + ' ' + details.item.name + '.';
             }
         }
 
@@ -150,14 +150,6 @@ var Utils = {
             }
             return 'Document';
         }
-    },
-    isMember: function (members, user) {
-        var lookup = {};
-        for (var i = 0, length = members.length; i < length; i++) {
-            lookup[members[i]._id.toString()] = members[i];
-        }
-
-        return lookup[user] !== undefined;
     },
     insertAtParentPath: function (childrens, item) {
         var subChildrens = [],
@@ -204,6 +196,14 @@ var Utils = {
                         });
                 });
         });
+    },
+    cleanArray: function (arr) {
+        var res = [];
+        for (var i = 0, length = arr.length; i < length; i++) {
+            if (arr[i])
+                res.push(arr[i]);
+        }
+        return res;
     }
 };
 
