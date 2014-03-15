@@ -191,9 +191,9 @@ module.exports = function (app) {
     /*
      * DELETE
      */
-    app.delete('/share/:id', mw.checkAuth, mw.validateId, function (req, res) {
+    app.delete('/share/:id/:member?', mw.checkAuth, mw.validateId, function (req, res) {
         var itemId = req.params.id,
-            member = req.body.member;
+            member = req.params.member;
         ItemShare.findOne({item: itemId}, function (err, ishare) {
             if (err) return res.send(500);
             if (!ishare) return res.send(404);
@@ -210,6 +210,8 @@ module.exports = function (app) {
                         // User is the owner,
                         // delete all sharing with this item
                         // and set isShared to false
+
+                        // if a member is given, only delete his membership
                         if (member) members = [].push({_id: member});
 
                         async.each(
@@ -227,21 +229,7 @@ module.exports = function (app) {
                                     cb()
                                 else
                                     Item.findByIdAndUpdate(itemId, {isShared: false}, cb);
-                            });
-                        /*var fn = [];
-                        obj.members.forEach(function (member) {
-                            fn.push(function (callback) {
-                                ItemShare.findOne({item: itemId, with: member._id}, function (err, mshare) {
-                                    if (err) return callback(err);
-                                    mshare.remove(callback);
-                                });
-                            });
-                        });
-                        async.parallel(fn, function (err) {
-                            if (err) return cb(err);
-
-                            Item.findByIdAndUpdate(itemId, {isShared: false}, cb);
-                        });*/
+                         });
                     },
                     function (cb) {
                         if (!Utils.isMember(obj.members, user)) return cb();
