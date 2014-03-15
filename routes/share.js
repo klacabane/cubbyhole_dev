@@ -276,7 +276,7 @@ module.exports = function (app) {
 
             // Sharing Confirmation
             if (!member)
-                ishare.getMembership(member)
+                ishare.getMembership(req.user)
                     .accepted = true;
             else    // Update member permissions
                 ishare.getMembership(member)

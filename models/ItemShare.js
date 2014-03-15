@@ -3,7 +3,7 @@ var mongoose = require('mongoose'),
 
 var memberSchema = new mongoose.Schema({
     email: String,
-    accepted: {type: Boolean, default: true},
+    accepted: Boolean,
     permissions: Number
 });
 
