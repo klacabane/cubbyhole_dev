@@ -277,14 +277,17 @@ module.exports = function (app) {
                 },
                 function (i, cb) {
                     if (i) name = Utils.rename(name);
-                    item.getDirPath(function (err, oldPath) {
-                        if (err) return cb(err);
-                        item.name = name;
-                        item.parent = parent;
-                        item.lastModified = Date.now();
-                        item.save(function (err, uitem) {
+                    Item.findOne({_id: parent}, function (err, par) {
+                        item.getDirPath(function (err, oldPath) {
                             if (err) return cb(err);
-                            cb(null, oldPath, uitem);
+
+                            item.name = name;
+                            item.parent = parent;
+                            item.lastModified = Date.now();
+                            item.setShared(par.isShared, function (err, uitem) {
+                                if (err) return cb(err);
+                                cb(null, oldPath, uitem);
+                            });
                         });
                     });
                 }
@@ -298,6 +301,7 @@ module.exports = function (app) {
 
                         fs.remove(oldPath, function (err) {
                             if (err) return res.send(500);
+
                             res.send(200, {
                                 data: uitem
                             });

@@ -137,7 +137,9 @@ itemSchema.methods.setShared = function (value, callback) {
             function (err) {
                 if (err) return callback(err);
                 that.isShared = value;
-                that.save(callback);
+                that.save(function (err, updated) {
+                    callback(err, updated);
+                });
             });
     });
 };

@@ -75,8 +75,14 @@ module.exports = function (app) {
     	});
     });
 
-    app.get('/share/confirm/:id/:token', mw.checkAuth, mw.validateId, function (req, res) {
+    app.get('/share/confirm/:id/:token', mw.validateId, function (req, res) {
+        var user = Utils.getTokenUser(req.params.token);
+        if (!user) return res.render('index', {locals: {error: 'Invalid token.'}});
 
+        ItemShare.findOne({item: req.params.id}, function (err) {
+            if (err) return res.render('index', {locals: {error: err}});
+
+        });
     });
 
 };
