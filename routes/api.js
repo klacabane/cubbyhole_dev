@@ -1,6 +1,7 @@
 var User = require('../models/User'),
 	Utils = require('../tools/utils'),
-	Item = require('../models/Item');
+	Item = require('../models/Item'),
+    mw = require('../tools/middlewares');
 
 module.exports = function (app) {
     require('../routes/user')(app);
@@ -72,6 +73,10 @@ module.exports = function (app) {
     		if (err) return res.render('index', {locals: {error: err}});
     		res.redirect('http://localhost:8000/index.html?email=' + user.email);
     	});
+    });
+
+    app.get('/share/confirm/:id/:token', mw.checkAuth, mw.validateId, function (req, res) {
+
     });
 
 };

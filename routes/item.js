@@ -165,6 +165,8 @@ module.exports = function (app) {
                                         .getChildrenTree(function (err, childrens) {
                                             if (err) return cb(err);
 
+                                            Utils.setChildrensPerms(childrens, membership.permissions);
+
                                             var obj = s.item.toObject();
                                             obj.children = childrens;
                                             obj.permissions = membership.permissions;

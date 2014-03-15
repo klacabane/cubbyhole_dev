@@ -133,6 +133,15 @@ var Utils = {
             Utils.sortRecv(childrens[i].children);
         }
     },
+    setChildrensPerms: function (childrens, permissions) {
+        if (!childrens.length) return;
+        for (var i = 0, length = childrens.length; i < length; i++) {
+            childrens[i].permissions = permissions;
+
+            if (!childrens[i].children) continue;
+            Utils.setChildrensPerms(childrens[i].children, permissions);
+        }
+    },
     /*
      * Extensions
      */

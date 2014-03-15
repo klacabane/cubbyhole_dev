@@ -18,12 +18,12 @@ var notificationSchema = new mongoose.Schema({
 });
 
 notificationSchema.methods.createMessage = function () {
-    switch (obj.type) {
+    switch (this.type) {
         case 'S':
-            obj.message = this.from.email + ' wants to share the folder ' + this.item.name + ' with you.';
+            this.message = this.from.email + ' wants to share the folder ' + this.item.name + ' with you.';
             break;
         case 'D':
-            obj.message = this.from.email + ' deleted the shared folder ' + this.item.name + '.';
+            this.message = this.from.email + ' deleted the shared folder ' + this.item.name + '.';
             break;
     }
 };

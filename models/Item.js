@@ -122,6 +122,26 @@ itemSchema.methods.duplicateTree = function (parent, callback) {
     });
 };
 
+itemSchema.methods.setShared = function (value, callback) {
+    var that = this;
+
+    this.getChildren(true, function (err, childrens) {
+        if (err || !childrens.length) return callback(err);
+
+        async.each(
+            childrens,
+            function (child, cb) {
+                child.isShared = value;
+                child.save(cb);
+            },
+            function (err) {
+                if (err) return callback(err);
+                that.isShared = value;
+                that.save(callback);
+            });
+    });
+};
+
 /*
  *	Statics
  */

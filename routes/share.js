@@ -125,8 +125,9 @@ module.exports = function (app) {
 
                             // Update item.isShared property and
                             // Create a new ItemShare
-                            item.isShared = true;
-                            item.save(function () {
+                            item.setShared(true, function (err) {
+                                if (err) return cb(err);
+
                                 new ItemShare({item: item._id, owner: results.from, members: members})
                                     .save(function (err, is) {
                                         cb(err, is);

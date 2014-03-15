@@ -22,8 +22,7 @@ itemShareSchema.pre('remove', function (next) {
     Item.findOne({_id: this.item}, function (err, item) {
         if (err) return next(err);
 
-        item.isShared = false;
-        item.save(next);
+        item.setShared(false, next);
     });
 });
 
@@ -33,6 +32,7 @@ itemShareSchema.methods.format = function () {
     obj._id = obj.item._id;
     obj.name = obj.item.name;
     obj.path = 'My Cubbyhole,' + obj.item.name;
+    obj.lastModified = obj.item.lastModified;
 
     delete obj.item;
 
