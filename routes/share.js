@@ -45,7 +45,7 @@ module.exports = function (app) {
                                         var member = {
                                             _id: u._id,
                                             email: u.email,
-                                            accepted: true,
+                                            accepted: false,
                                             permissions: r.permissions
                                         };
                                         cb(null, member);

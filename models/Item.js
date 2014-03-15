@@ -126,7 +126,7 @@ itemSchema.methods.setShared = function (value, callback) {
     var that = this;
 
     this.getChildren(true, function (err, childrens) {
-        if (err || !childrens.length) return callback(err);
+        if (err) return callback(err);
 
         async.each(
             childrens,

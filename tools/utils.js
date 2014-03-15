@@ -94,19 +94,18 @@ var Utils = {
             }
         });
 
-        var token;
-        if (typeof details === 'function') {    // Account Verification
-            token = jwt.encode({
-                id: recipient._id,
-                created: Date.now()
-            }, cfg.token.secret);
+        var token = jwt.encode({
+            id: recipient._id,
+            created: Date.now()
+        }, cfg.token.secret);
 
+        if (typeof details === 'function') {    // Account Verification
             options.subject = "Cubbyhole signup confirmation";
             options.html = "<a href='http://localhost:3000/auth/confirm/" + token + "''>Confirm your mail</a>";
         } else {
             if (details.hasOwnProperty('share')) {
                 options.subject = details.from.email + ' wants to share the ' + details.item.type + ' ' + details.item.name + ' with you.';
-                options.html = "<a href='http://localhost:8000/share/" + details.share + "''>View the " + details.item.type + "</a>";
+                options.html = "<a href='http://localhost:3000/share/confirm/" + details.share + "/" + token + "''>View the " + details.item.type + "</a>";
             } else { // Delete
                 options.subject = details.from.email + ' removed the ' + details.item.type + ' ' + details.item.name + '.';
             }

@@ -1,6 +1,7 @@
 var User = require('../models/User'),
 	Utils = require('../tools/utils'),
 	Item = require('../models/Item'),
+    ItemShare = require('../models/ItemShare'),
     mw = require('../tools/middlewares');
 
 module.exports = function (app) {
@@ -79,9 +80,16 @@ module.exports = function (app) {
         var user = Utils.getTokenUser(req.params.token);
         if (!user) return res.render('index', {locals: {error: 'Invalid token.'}});
 
-        ItemShare.findOne({item: req.params.id}, function (err) {
+        ItemShare.findOne({item: req.params.id}, function (err, ishare) {
             if (err) return res.render('index', {locals: {error: err}});
 
+            ishare.getMembership(user)
+                .accepted = true;
+            ishare.save(function (err) {
+                if (err) return res.render('index', {locals: {error: err}});
+
+                res.redirect('http://localhost:8000/webapp.html#/files');
+            });
         });
     });
 
