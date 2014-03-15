@@ -246,9 +246,21 @@ module.exports = function (app) {
 			if (err) return res.send(500);
 			if (!item) return res.send(404);
 
-            item.remove(function (err) {
-                if (err) return res.send(500);
+            async.series([
+                // Remove Sharing entry if any
+                function (cb) {
+                    ItemShare.findOne({item: item._id}, function (err, ishare) {
+                        if (err || !ishare) return cb(err);
 
+                        ishare.remove(cb);
+                    });
+                },
+                // Remove item
+                function (cb) {
+                    item.remove(cb);
+                }
+            ], function (err) {
+                if (err) return res.send(500);
                 res.send(200);
             });
 		});

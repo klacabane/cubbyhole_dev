@@ -36,7 +36,7 @@ module.exports = function (app) {
                                 User.findOne({email: r.email})
                                     .lean()
                                     .exec(function (err, u) {
-                                        if (err || !u) return cb(err);
+                                        if (err || !u || !u.verified) return cb(err);
                                         if (ishare && (u._id === ishare.owner._id
                                             || ishare.isMember(u._id))) return cb(); // Membership already exists
 
