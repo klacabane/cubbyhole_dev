@@ -9,7 +9,8 @@ var express = require('express'),
 	mongoose = require('mongoose'),
 	cfg = require('./config'),
     mw = require('./tools/middlewares'),
-	fs = require('fs');
+	fs = require('fs'),
+    cache = require('./tools/cache');
 
 var app = express();
 
@@ -38,9 +39,15 @@ if ('development' == app.get('env')) {
 // Open database connection
 mongoose.connect(cfg.db.address, function (err) {
 	if (err) throw err;
+
+    // Uncomment to populate db with new Plans/Bws
+
+    /*
 	Utils.insertPlanAndBw(function (err) {
 		if (err) throw err;
 	});
+	*/
+    cache.init();
 });
 
 // fake storage folder

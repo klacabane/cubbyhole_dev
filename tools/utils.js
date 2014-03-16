@@ -54,26 +54,32 @@ var Utils = {
 		fs.readFile('./datas/planAndBw.json', function (err, data) {
 			data = JSON.parse(data);
 
-			Plan.removeAll( function (err) {
-				if (err) return callback(err);
-				var bwCount = data.bandwidths.length,
-					planCount = data.plans.length;
-				data.bandwidths.forEach( function (bwArgs) {
-					var bw = new Bandwidth(bwArgs);
-					bw.save( function (err) {
-						if (err) return callback(err);
-						if (--bwCount == 0)
-							data.plans.forEach( function (planArgs) {
-								var plan = new Plan(planArgs);
-								plan.save( function (err) {
-									if (err) return callback(err);
-									if (--planCount == 0)
-										callback();
-								});
-							});
-					});
-				});
-			});
+            Plan.removeAll(function (err) {
+                if (err) return callback(err);
+                async.each(
+                    data.bandwidths,
+                    function (bwArgs, cb) {
+                        new Bandwidth(bwArgs)
+                            .save(cb);
+                    },
+                    function (err) {
+                        if (err) return callback(err);
+
+                        Bandwidth.find({}, function (err, bws) {
+                            if (err) return callback(err);
+
+                            var i = 0;
+                            async.each(
+                                data.plans,
+                                function (planArgs, cb) {
+                                    var plan = new Plan(planArgs);
+                                    plan.bandwidth = bws[i++]._id;
+                                    plan.save(cb);
+                                },
+                                callback);
+                        });
+                    });
+            });
 		});
 	},
 	/* Email */

@@ -1,4 +1,5 @@
 var mongoose = require('mongoose'),
+    Plan = require('../models/Plan'),
 	UserPlan = require('../models/UserPlan'),
     Item = require('../models/Item'),
     ItemShare = require('../models/ItemShare'),
@@ -28,11 +29,15 @@ var userSchema = new mongoose.Schema({
  		} else {
 	 		async.parallel([
  				function (cb) {
- 					UserPlan.create({ user: that._id, plan: 0 }, function (err, up) {
-						if (err) return cb(err);
-						that.currentPlan = up._id;
-						cb();
-					});
+                    Plan.findOne({price: 0}, function (err, plan) {
+                        if (err) return cb(err);
+
+                        UserPlan.create({ user: that._id, plan: plan._id }, function (err, up) {
+                            if (err) return cb(err);
+                            that.currentPlan = up._id;
+                            cb();
+                        });
+                    });
  				},
  				function (cb) {
  					that.hashPw(cb);
@@ -46,7 +51,18 @@ var userSchema = new mongoose.Schema({
 
 /*
 *	[ Methods ]
-*/	
+*/
+
+userSchema.methods.format = function () {
+    var obj = this.toObject();
+
+    delete obj.currentPlan.user;
+    delete obj.currentPlan._id;
+    delete obj.currentPlan.__v;
+
+    return obj;
+};
+
 	// updatePlan
 	userSchema.methods.updatePlan = function (planId, callback) {
 		var that = this;

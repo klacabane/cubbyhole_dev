@@ -2,13 +2,12 @@ var mongoose = require('mongoose'),
 	Bandwidth = require('../models/Bandwidth');
 
 var planSchema = new mongoose.Schema({
-	_id: Number,
 	name : String,
 	price : Number,
 	duration : Number,
 	storage : Number,
 	sharedQuota : Number,
-	bandwidth : { type: Number, ref: 'Bandwidth' }
+	bandwidth : { type: mongoose.Schema.Types.ObjectId, ref: 'Bandwidth' }
 });
 
 /*

@@ -10,7 +10,7 @@ var itemSchema = new mongoose.Schema({
 	name: 		    String,
 	type: 		    String,
 	url: 		    String,
-	owner: 		    {type: mongoose.Schema.ObjectId, ref: 'User'},
+	owner: 		    {type: mongoose.Schema.Types.ObjectId, ref: 'User'},
 	meta: 		    mongoose.Schema.Types.Mixed,                    // @type, @size
     lastModified:   {type: Date, default: Date.now},
     isRoot:         Boolean,

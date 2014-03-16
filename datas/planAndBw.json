@@ -1,15 +1,15 @@
 {
 	"plans": [
-		{ "_id": 0, "name": "Plan #0", "price": 0, "duration": 30, "storage": 100, "sharedQuota": 100, "bandwidth": 0 },
-		{ "_id": 1, "name": "Plan #1", "price": 9.99, "duration": 60, "storage": 200, "sharedQuota": 200, "bandwidth": 1 },
-		{ "_id": 2, "name": "Plan #2", "price": 14.99, "duration": 90, "storage": 300, "sharedQuota": 300, "bandwidth": 2 },
-		{ "_id": 3, "name": "Plan #3", "price": 24.99, "duration": 365, "storage": 1100, "sharedQuota": 1100, "bandwidth": 3 }
+		{ "name": "Plan #0", "price": 0, "duration": 30, "storage": 100, "sharedQuota": 100 },
+		{ "name": "Plan #1", "price": 9.99, "duration": 60, "storage": 200, "sharedQuota": 200 },
+		{ "name": "Plan #2", "price": 14.99, "duration": 90, "storage": 300, "sharedQuota": 300 },
+		{ "name": "Plan #3", "price": 24.99, "duration": 365, "storage": 1100, "sharedQuota": 1100 }
 	],
 	"bandwidths": [
-		{ "_id": 0, "upload": 100, "download": 100 },
-		{ "_id": 1, "upload": 300, "download": 300 },
-		{ "_id": 2, "upload": 500, "download": 500 },
-		{ "_id": 3, "upload": 1000, "download": 1000 }
+		{ "upload": 100, "download": 100 },
+		{ "upload": 300, "download": 300 },
+		{ "upload": 500, "download": 500 },
+		{ "upload": 1000, "download": 1000 }
 	]
 }
 	
