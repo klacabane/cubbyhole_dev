@@ -15,7 +15,7 @@ var itemSchema = new mongoose.Schema({
     lastModified:   {type: Date, default: Date.now},
     isRoot:         Boolean,
     isCopy:         Boolean,
-    isShared:       {type: Boolean, default: false}
+    isShared:       Boolean
 });
 
 itemSchema.plugin(tree);

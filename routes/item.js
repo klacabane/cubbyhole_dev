@@ -34,11 +34,11 @@ module.exports = function (app) {
 				meta = Utils.getFileMeta(f);
 			}
 
-			Item.findOne({name: name, type: type, parent: parent, owner: u, isShared: par.isShared}, function (err, item) {
+			Item.findOne({name: name, type: type, parent: parent, owner: u}, function (err, item) {
 				if (err) return res.send(500);
 				if (item) name = Utils.rename(name);
 
-				new Item({name: name, type: type, owner: u, parent: parent, meta: meta})
+				new Item({name: name, type: type, owner: u, parent: parent, meta: meta, isShared: par.isShared})
                     .save(function (err, newItem) {
 					if (err) return res.send(500);
 
