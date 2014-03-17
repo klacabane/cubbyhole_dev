@@ -8,9 +8,12 @@ var userPlanSchema = new mongoose.Schema({
 	billingDate: { type: Date, default: Date.now },
 	active: { type: Boolean, default: true },
     usage: {
-        storage: {type: Number, default: 430},
-        share: {type: Number, default: 311},
-        bandwidth: {type: Number, default: 500}
+        storage: {type: Number, default: 60},
+        share: {type: Number, default: 40},
+        bandwidth: {
+            upload: {type: Number, default: 20},
+            download: {type: Number, default: 25}
+        }
     }
 });
 
