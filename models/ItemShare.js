@@ -13,7 +13,7 @@ var itemShareSchema = new mongoose.Schema({
         email: String
     },
     members: [memberSchema],
-    item: { type: mongoose.Schema.Types.ObjectId, ref: 'Item'},
+    item: {type: mongoose.Schema.Types.ObjectId, ref: 'Item'},
     public: {type: Boolean, default: false}
 });
 

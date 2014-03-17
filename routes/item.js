@@ -22,9 +22,9 @@ module.exports = function (app) {
 
 		if (type != 'folder' && type != 'file' || !parent) return res.send(400);
 
-		Item.parentExists(parent, function (err, exists) {
+		Item.findOne({_id: parent}, function (err, par) {
 			if (err) return res.send(500);
-			if (!exists) return res.send(422);
+			if (!par) return res.send(422);
 
 			if (type == 'folder') {
 				name = req.body.name;
@@ -34,7 +34,7 @@ module.exports = function (app) {
 				meta = Utils.getFileMeta(f);
 			}
 
-			Item.findOne({name: name, type: type, parent: parent, owner: u}, function (err, item) {
+			Item.findOne({name: name, type: type, parent: parent, owner: u, isShared: par.isShared}, function (err, item) {
 				if (err) return res.send(500);
 				if (item) name = Utils.rename(name);
 
