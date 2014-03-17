@@ -1,5 +1,7 @@
 var mongoose = require('mongoose'),
-    Item = require('../models/Item');
+    Item = require('../models/Item'),
+    Utils = require('../tools/Utils'),
+    async = require('async');
 
 var memberSchema = new mongoose.Schema({
     email: String,
@@ -67,6 +69,32 @@ itemShareSchema.methods.getMembership = function (id) {
             membership = members[i];
     }
     return membership;
+};
+
+itemShareSchema.statics.getItemShare = function (item, callback) {
+    var that = this;
+
+    this.findOne({item: item._id}, function (err, ishare) {
+        if (err) return callback(err);
+        if (ishare) return callback(null, ishare);
+
+        item.getAncestors(function (err, ancestors) {
+            if (err) return callback(err);
+
+            var fn = [];
+            ancestors.forEach(function (anc) {
+                fn.push(function (cb) {
+                    that.findOne({item: anc._id}, cb);
+                });
+            });
+
+            async.parallel(fn, function (err, results) {
+                if (err) return callback(err);
+
+                callback(null, Utils.cleanArray(results)[0]);
+            });
+        });
+    });
 };
 
 module.exports = mongoose.model('ItemShare', itemShareSchema);

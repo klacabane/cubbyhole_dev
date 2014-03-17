@@ -242,25 +242,34 @@ module.exports = function (app) {
 	 * 	Removes resources and childrens if any
 	 */
 	app.delete('/item/:id', mw.checkAuth, mw.validateId, function (req, res) {
+        var user = req.user;
 		Item.findOne({_id: req.params.id}, function (err, item) {
 			if (err) return res.send(500);
 			if (!item) return res.send(404);
 
             async.series([
                 // Remove Sharing entry if any
+                // Make sure user is allowed
                 function (cb) {
-                    ItemShare.findOne({item: item._id}, function (err, ishare) {
-                        if (err || !ishare) return cb(err);
+                    if (!item.isShared && user === item.owner.toString()) return cb();
 
-                        ishare.remove(cb);
+                    ItemShare.getItemShare(item, function (err, ishare) {
+                        if (err || !ishare) return cb(true, 500);
+                        if (user !== ishare.owner._id.toString() &&
+                            ishare.getMembership(user).permissions !== 1) return cb(true, 403);
+
+                        if (ishare.item.toString() === item._id.toString())
+                            ishare.remove(cb);
+                        else
+                            cb();
                     });
                 },
                 // Remove item
                 function (cb) {
                     item.remove(cb);
                 }
-            ], function (err) {
-                if (err) return res.send(500);
+            ], function (err, codes) {
+                if (err) return res.send(codes[0] || 500);
                 res.send(200);
             });
 		});
