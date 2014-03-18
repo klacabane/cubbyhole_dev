@@ -9,6 +9,7 @@ module.exports = function (app) {
     require('../routes/plan')(app);
     require('../routes/item')(app);
     require('../routes/share')(app);
+    require('../routes/link')(app);
     require('../routes/notification')(app);
 
     // Signin

@@ -75,8 +75,7 @@ itemShareSchema.statics.getItemShare = function (item, callback) {
     var that = this;
 
     this.findOne({item: item._id}, function (err, ishare) {
-        if (err) return callback(err);
-        if (ishare) return callback(null, ishare);
+        if (err || ishare) return callback(err, ishare);
 
         item.getAncestors(function (err, ancestors) {
             if (err) return callback(err);
@@ -89,9 +88,7 @@ itemShareSchema.statics.getItemShare = function (item, callback) {
             });
 
             async.parallel(fn, function (err, results) {
-                if (err) return callback(err);
-
-                callback(null, Utils.cleanArray(results)[0]);
+                callback(err, Utils.cleanArray(results)[0]);
             });
         });
     });

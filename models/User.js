@@ -102,8 +102,19 @@ userSchema.methods.format = function () {
     /*
      *  [ Statics ]
      */
-    userSchema.statics.isAuthorized = function (args, callback) {
+    userSchema.statics.hasPermissions = function (args, callback) {
+        var user = args.user,
+            item = args.item,
+            permissions = args.permissions || 0;
 
+        if (user === item.owner.toString())
+            callback(null, true);
+        else
+            ItemShare.getItemShare(item, function (err, ishare) {
+                if (err || !ishare) return callback(err, false);
+
+                callback(null, ishare.getMembership(user).permissions >= permissions);
+            });
     };
 
 module.exports = mongoose.model('User', userSchema);

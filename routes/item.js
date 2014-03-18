@@ -120,15 +120,45 @@ module.exports = function (app) {
 	 * 	GET
 	 * 	Return single item
 	 */
-	app.get('/item/:id', mw.checkAuth, mw.validateId, function (req, res) {
+	app.get('/item/:id', mw.validateId, function (req, res) {
 		Item.findOne({_id: req.params.id}, function (err, item) {
-			if (err) return res.send(500);
-			if (!item) return res.send(404);
+            if (err) return res.send(500);
+            if (!item) return res.send(404);
 
-			res.send(200, {
-				data: item
-			});
-		});
+            async.waterfall([
+                // check if the request is authorized
+                function (cb) {
+                    if (item.isPublic) return cb();
+
+                    mw.checkAuth(req, res, function () {
+                        User.hasPermissions({user: req.user, item: item}, function (err, ok) {
+                            if (err || !ok) return cb(err, 403);
+                            cb();
+                        });
+                    });
+                },
+                function (cb) {
+                    if (item.type === 'file') return cb(null, item);
+
+                    // Get folder childrens
+                    item.getChildrenTree(function (err, childrens) {
+                        if (err) return cb(err);
+
+                        var obj = item.toObject();
+                        Utils.sortRecv(childrens);
+                        obj.children = childrens;
+
+                        cb(null, obj);
+                    });
+                }
+            ], function (err, result) {
+                if (err) return res.send(500);
+
+                res.send(200, {
+                    data: result
+                });
+            });
+        });
 	});
 
     /*
@@ -203,37 +233,53 @@ module.exports = function (app) {
      *  GET
      *  Returns resource ( file or folder.zip ) buffer
      */
-	app.get('/item/:id/download/:token', mw.checkAuth, mw.validateId, function (req, res) {
+	app.get('/item/:id/download/:token?', mw.validateId, function (req, res) {
 		Item.findOne({_id: req.params.id}, function (err, item) {
 			if (err) return res.send(500);
 			if (!item) return res.send(404);
 
-			item.getDirPath(function (err, dirPath) {
-                if (err) return res.send(500);
+            function download() {
+                item.getDirPath(function (err, dirPath) {
+                    if (err) return res.send(500);
 
-				if (item.type == 'file') {
-                    res.download(dirPath);
-                } else {
-                    item.getChildren(function (err, childrens) {
-                        if (err) return res.send(500);
-                        if (childrens.length === 0) return res.send(405);
+                    if (item.type == 'file') {
+                        res.download(dirPath);
+                    } else {
+                        item.getChildren(function (err, childrens) {
+                            if (err) return res.send(500);
+                            if (childrens.length === 0) return res.send(405);
 
-                        var zip = new admZip();
-                        zip.addLocalFolder(dirPath, item.name);
+                            var zip = new admZip();
+                            zip.addLocalFolder(dirPath, item.name);
 
-                        zip.toBuffer(function (buffer) {
-                            res.writeHead(200, {
-                                'Content-Type': 'application/octet-stream',
-                                'Content-Length': buffer.length,
-                                'Content-Disposition': 'attachment; filename=' + [item.name, '.zip'].join('')
+                            zip.toBuffer(function (buffer) {
+                                res.writeHead(200, {
+                                    'Content-Type': 'application/octet-stream',
+                                    'Content-Length': buffer.length,
+                                    'Content-Disposition': 'attachment; filename=' + [item.name, '.zip'].join('')
+                                });
+                                res.write(buffer);
+                            }, function () {
+                                res.send(500);
                             });
-                            res.write(buffer);
-                        }, function () {
-                            res.send(500);
                         });
+                    }
+                });
+            };
+
+            if (item.isPublic)
+                download();
+            else
+                mw.checkAuth(req, res, function () {
+                    // User is authenticated
+                    // now check if he is authorized
+                    User.hasPermissions({user: req.user, item: item}, function (err, ok) {
+                        if (err) return res.send(500);
+                        if (!ok) return res.send(403);
+
+                        download();
                     });
-				}
-			});
+                });
 		});
 	});
 
@@ -251,17 +297,18 @@ module.exports = function (app) {
                 // Remove Sharing entry if any
                 // Make sure user is allowed
                 function (cb) {
-                    if (!item.isShared && user === item.owner.toString()) return cb();
+                    User.hasPermissions({user: user, item: item, permissions: 1}, function (err, ok) {
+                        if (err) return cb(err);
+                        if (!ok) return cb(true, 403);
 
-                    ItemShare.getItemShare(item, function (err, ishare) {
-                        if (err || !ishare) return cb(true, 500);
-                        if (user !== ishare.owner._id.toString() &&
-                            ishare.getMembership(user).permissions !== 1) return cb(true, 403);
+                        ItemShare.getItemShare(item, function (err, ishare) {
+                            if (err || !ishare) return cb(err);
 
-                        if (ishare.item.toString() === item._id.toString())
-                            ishare.remove(cb);
-                        else
-                            cb();
+                            if (ishare.item.toString() === item._id.toString())
+                                ishare.remove(cb);
+                            else
+                                cb();
+                        });
                     });
                 },
                 // Remove item

@@ -16,8 +16,7 @@ module.exports = function (app) {
     app.post('/share/:id', mw.checkAuth, mw.validateId, function (req, res) {
         var itemId = req.params.id,
             receivers = req.body.with,
-            from = req.user,
-            isPublic = req.isPublic == 'true';
+            from = req.user;
 
         async.parallel({
             item: function (callback) {
@@ -162,25 +161,7 @@ module.exports = function (app) {
      * GET
      */
     app.get('/share/:id', mw.validateId, function (req, res) {
-        ItemShare.findOne({_id: req.params.id})
-            .populate('item')
-            .exec(function (err, itemShare) {
-                if (err) return res.send(500);
-                if (!itemShare) return res.send(404);
 
-                if (itemShare.public)
-                    res.send(201, {
-                        data: ishare.item
-                    });
-                else
-                    mw.checkAuth(req, res, function () {
-                        if (req.user !== itemShare.with.toString()) return res.send(403);
-
-                        res.send(201, {
-                            data: itemShare.item
-                        });
-                    });
-            });
     });
 
     app.get('/share', mw.checkAuth, function (req, res) {
