@@ -115,7 +115,7 @@ var Utils = {
             } else if (details.hasOwnProperty('link')) { // Link
                 var from = details.from ? details.from.email : 'Someone';
                 options.subject = from + ' invited you to see the resource ' + details.item.name + '.';
-                options.html = "<a href='http://localhost:8000/webapp.html#" + details.link + ">View the " + details.item.type + "</a>";
+                options.html = "<a href='http://localhost:8000/webapp.html#" + details.link + "'>View the " + details.item.type + "</a>";
             } else { // Delete
                 options.subject = details.from.email + ' removed the ' + details.item.type + ' ' + details.item.name + '.';
             }

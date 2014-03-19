@@ -327,57 +327,74 @@ module.exports = function (app) {
 	 *  Update resource name or parent
 	 */
 	app.put('/item/:id', mw.checkAuth, mw.validateId, function (req, res) {
-		Item.findOne({_id: req.params.id}, function (err, item) {
-			if (err) return res.send(500);
-			if (!item) return res.send(404);
-			// if (req.user != item.owner) return res.send(401);
+		Item.findOne({_id: req.params.id})
+            .populate('parent')
+            .exec(function (err, item) {
+                if (err) return res.send(500);
+                if (!item) return res.send(404);
 
-            var name = req.body.name || item.name;
-            var parent = req.body.parent || item.parent.toString();
+                var name = req.body.name || item.name;
+                var parent = req.body.parent || item.parent._id.toString();
 
-            async.waterfall([
-                function (cb) {
-                    Item.parentExists(parent, cb);
-                },
-                function (exists, cb) {
-                    if (!exists) return cb(true, 422); //hm
-                    Item.findOne({name: name, parent: parent, type: item.type, owner: item.owner}, cb);
-                },
-                function (i, cb) {
-                    if (i) name = Utils.rename(name);
-                    Item.findOne({_id: parent}, function (err, par) {
-                        item.getDirPath(function (err, oldPath) {
+                async.waterfall([
+                    function (cb) {
+                        // Check if an item with same parent and name exists,
+                        // rename if needed
+                        Item.findOne({name: name, parent: parent, type: item.type, owner: item.owner}, function (err, i) {
                             if (err) return cb(err);
+                            if (i) name = Utils.rename(name);
 
-                            item.name = name;
-                            item.parent = parent;
-                            item.lastModified = Date.now();
-                            item.setShared(par.isShared, function (err, uitem) {
+                            cb();
+                        });
+                    },
+                    function (cb) {
+                        var oldParent = item.parent;
+                        // Retrieve new parent
+                        Item.findOne({_id: parent}, function (err, newParent) {
+                            if (!newParent) return cb(true, 400);
+
+                            item.getDirPath(function (err, oldPath) {
                                 if (err) return cb(err);
-                                cb(null, oldPath, uitem);
+
+                                item.name = name;
+                                item.parent = newParent._id;
+                                item.lastModified = Date.now();
+                                // We're moving a non shared folder to a shared parent,
+                                // or a embed shared folder to a non shared parent
+                                // update property
+                                if (oldParent.isShared && !newParent.isShared ||
+                                    !oldParent.isShared && newParent.isShared)
+                                    item.setShared(newParent.isShared, function (err, uitem) {
+                                        if (err) return cb(err);
+                                        cb(null, oldPath, uitem);
+                                    });
+                                else
+                                    item.save(function (err, uitem) {
+                                        if (err) return cb(err);
+                                        cb(null, oldPath, uitem);
+                                    })
                             });
                         });
-                    });
-                }
-            ], function (err, oldPath, uitem) {
-                if (err) return res.send(oldPath || 500);
+                    }
+                ], function (err, oldPath, uitem) {
+                    if (err) return res.send(oldPath || 500);
 
-                uitem.getDirPath(function (err, newPath) {
-                    if (err) return res.send(500);
-                    fs.copy(oldPath, newPath, function (err) {
+                    uitem.getDirPath(function (err, newPath) {
                         if (err) return res.send(500);
-
-                        fs.remove(oldPath, function (err) {
+                        fs.copy(oldPath, newPath, function (err) {
                             if (err) return res.send(500);
 
-                            res.send(200, {
-                                data: uitem
+                            fs.remove(oldPath, function (err) {
+                                if (err) return res.send(500);
+
+                                res.send(200, {
+                                    data: uitem
+                                });
                             });
                         });
                     });
                 });
             });
-        });
 	});
 
 };
