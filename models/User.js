@@ -105,9 +105,10 @@ userSchema.methods.format = function () {
     userSchema.statics.hasPermissions = function (args, callback) {
         var user = args.user,
             item = args.item,
+            owner = item.owner._id ? item.owner._id.toString() : item.owner.toString(),
             permissions = args.permissions || 0;
 
-        if (user === item.owner.toString())
+        if (user === owner)
             callback(null, true);
         else
             ItemShare.getItemShare(item, function (err, ishare) {

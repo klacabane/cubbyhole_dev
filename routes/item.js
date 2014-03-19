@@ -121,44 +121,47 @@ module.exports = function (app) {
 	 * 	Return single item
 	 */
 	app.get('/item/:id', mw.validateId, function (req, res) {
-		Item.findOne({_id: req.params.id}, function (err, item) {
-            if (err) return res.send(500);
-            if (!item) return res.send(404);
-
-            async.waterfall([
-                // check if the request is authorized
-                function (cb) {
-                    if (item.isPublic) return cb();
-
-                    mw.checkAuth(req, res, function () {
-                        User.hasPermissions({user: req.user, item: item}, function (err, ok) {
-                            if (err || !ok) return cb(err, 403);
-                            cb();
-                        });
-                    });
-                },
-                function (cb) {
-                    if (item.type === 'file') return cb(null, item);
-
-                    // Get folder childrens
-                    item.getChildrenTree(function (err, childrens) {
-                        if (err) return cb(err);
-
-                        var obj = item.toObject();
-                        Utils.sortRecv(childrens);
-                        obj.children = childrens;
-
-                        cb(null, obj);
-                    });
-                }
-            ], function (err, result) {
+		Item.findOne({_id: req.params.id})
+            .populate('owner')
+            .exec(function (err, item) {
                 if (err) return res.send(500);
+                if (!item) return res.send(404);
 
-                res.send(200, {
-                    data: result
+                async.waterfall([
+                    // check if the request is authorized
+                    function (cb) {
+                        if (item.isPublic) return cb();
+
+                        mw.checkAuth(req, res, function () {
+                            User.hasPermissions({user: req.user, item: item}, function (err, ok) {
+                                if (err || !ok) return cb(err, 403);
+                                cb();
+                            });
+                        });
+                    },
+                    function (cb) {
+                        if (item.type === 'file') return cb(null, item);
+
+                        // Get folder childrens
+                        item.getChildrenTree(function (err, childrens) {
+                            if (err) return cb(err);
+
+                            var obj = item.toObject();
+                            Utils.sortRecv(childrens);
+                            obj.children = childrens;
+                            obj.owner = {_id: item.owner._id, email: item.owner.email};
+
+                            cb(null, obj);
+                        });
+                    }
+                ], function (err, result) {
+                    if (err) return res.send(500);
+
+                    res.send(200, {
+                        data: result
+                    });
                 });
             });
-        });
 	});
 
     /*
