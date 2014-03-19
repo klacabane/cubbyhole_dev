@@ -77,11 +77,16 @@ itemSchema.methods.getDirPath = function (callback) {
     if (this.isRoot)
         return callback(null, path.join(cfg.storage.dir, that.owner.toString()));
 
-    this.getAncestors(function (err, items) {
+    this.getAncestors(function (err, ancestors) {
         if (err) return callback(err);
 
-        items.forEach(function (i) {
-            fullPath = path.join(fullPath, i.name);
+        ancestors.sort(function (a, b) {
+            if (a.level < b.level) return -1;
+            else return 1;
+        });
+
+        ancestors.forEach(function (ancestor) {
+            fullPath = path.join(fullPath, ancestor.name);
         });
         callback(null, path.join(fullPath, that.name));
     });
@@ -161,6 +166,66 @@ itemSchema.methods.removeLinkRecipient = function (id) {
             break;
         }
     }
+};
+
+itemSchema.methods.getSize = function (callback) {
+    var that = this;
+    this.getDirPath(function (err, dirPath) {
+        if (err) return callback(err);
+
+        fs.stat(dirPath, function (err, stats) {
+            var total = stats.size;
+            that.getChildren(function (err, childrens) {
+                if (err) return callback(err);
+
+                async.each(
+                    childrens,
+                    function (child, cb) {
+                        child.getSize(function (err, size) {
+                            total += size;
+                            cb(err);
+                        });
+                    },
+                function (err) {
+                    callback(err, total);
+                });
+            });
+        });
+    });
+};
+
+itemSchema.methods.formatWithSize = function (callback) {
+    var obj = this.toObject(),
+        that = this;
+    // Files already have their size from upload
+    if (this.type === 'file') return callback(null, obj);
+
+    // Get folder total size
+    this.getSize(function (err, size) {
+        if (err) return callback(err);
+
+        obj.meta = {size: size};
+
+        var formattedChilds = [];
+        that.getChildren(function (err, childrens) {
+            if (err) return callback(err);
+
+            async.each(
+                childrens,
+                function (child, cb) {
+                    child.formatWithSize(function (err, childObj) {
+                        if (err) return cb(err);
+
+                        formattedChilds.push(childObj);
+                        cb();
+                    });
+                },
+            function (err) {
+                obj.children = formattedChilds;
+                callback(err, obj);
+            });
+        });
+    });
 };
 
 /*

@@ -164,6 +164,9 @@ module.exports = function (app) {
 
     });
 
+    /*
+     *  Returns all Shares of authenticated user
+     */
     app.get('/share', mw.checkAuth, function (req, res) {
         var user = req.user;
         ItemShare.find({$or: [{'owner._id': user}, {'members._id': user}]})
@@ -174,25 +177,34 @@ module.exports = function (app) {
                 var results = [];
                 async.each(
                     shares,
-                    function (s, callback) {
-                        var obj = s.format();
+                    function (share, callback) {
+                        // Adjust ItemShare object properties
+                        // with .path defaults to My Cubbyhole, .name
+                        var shareObj = share.format();
 
-                        // Shared items are at the root folder of participants
-                        if (s.owner._id.toString() !== user) {
-                            results.push(obj);
-                            callback();
-                        } else {
-                            s.item.getDirPath(function (err, dirPath) {
-                                if (err) return callback(err);
+                        share.item.getSize(function (err, size) {
+                            if (err) return callback(err);
 
-                                var p = dirPath.split(path.sep);
-                                p.splice(0, 2, 'My Cubbyhole');
-                                obj.path = p.join(',');
+                            shareObj.meta = {size: size};
 
-                                results.push(obj);
+                            if (share.owner._id.toString() !== user) {
+                                results.push(shareObj);
                                 callback();
-                            });
-                        }
+                            } else {
+                                // if user is the owner,
+                                // we overwrite path property with the actual folder path
+                                share.item.getDirPath(function (err, dirPath) {
+                                    if (err) return callback(err);
+
+                                    var p = dirPath.split(path.sep);
+                                    p.splice(0, 2, 'My Cubbyhole');
+                                    shareObj.path = p.join(',');
+
+                                    results.push(shareObj);
+                                    callback();
+                                });
+                            }
+                        });
                     },
                     function (err) {
                         if (err) return res.send(500);

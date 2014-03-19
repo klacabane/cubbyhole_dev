@@ -8,7 +8,9 @@ var	jwt = require('jwt-simple'),
 	Bandwidth = require('../models/Bandwidth');
 
 var Utils = {
-	/* Token */
+	/*
+	 *  Token
+	 */
 	generateToken: function (u, r) {
 		var dur = r ? cfg.token.expiration_long : cfg.token.expiration;
 
@@ -35,7 +37,9 @@ var Utils = {
 
 		return true;
 	},
-	/* File */
+	/*
+	 *  File
+	 */
 	getFileMeta: function (file) {
         var ext = file.name.split('.').pop();
         var type = this._extensions.find(ext);
@@ -215,6 +219,9 @@ var Utils = {
                 });
         });
     },
+    /*
+     *  Array
+     */
     cleanArray: function (arr) {
         var res = [];
         for (var i = 0, length = arr.length; i < length; i++) {

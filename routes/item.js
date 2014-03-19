@@ -174,10 +174,9 @@ module.exports = function (app) {
             root: function (cb) {
                 Item.findOne({owner: user, isRoot: true}, function (err, rootFolder) {
                     if (err) return cb(err);
-                    rootFolder.getChildrenTree(function (err, childrens) {
-                        if (err) return cb(err);
 
-                        cb(null, {id: rootFolder._id, childrens: childrens});
+                    rootFolder.formatWithSize(function (err, rootObj) {
+                        cb(null, rootObj);
                     });
                 });
             },
@@ -189,21 +188,19 @@ module.exports = function (app) {
                         if (err) return cb(err);
 
                         var fn = [];
-                        shares.forEach(function (s) {
-                            var membership = s.getMembership(user);
+                        shares.forEach(function (share) {
+                            var membership = share.getMembership(user);
 
                             if (membership.accepted)
                                 fn.push(function (cb) {
-                                    s.item
-                                        .getChildrenTree(function (err, childrens) {
+                                    share.item
+                                        .formatWithSize(function (err, itemObj) {
                                             if (err) return cb(err);
 
-                                            Utils.setChildrensPerms(childrens, membership.permissions);
+                                            Utils.setChildrensPerms(itemObj.children, membership.permissions);
+                                            itemObj.permissions = membership.permissions;
 
-                                            var obj = s.item.toObject();
-                                            obj.children = childrens;
-                                            obj.permissions = membership.permissions;
-                                            cb(null, obj);
+                                            cb(null, itemObj);
                                         });
                                 });
                         });
@@ -215,18 +212,17 @@ module.exports = function (app) {
         function (err, results) {
             if (err) return res.send(500);
 
-            var childrens = results.root.childrens
+            var childrens = results.root.children
                 .concat(results.shares);
 
             Utils.sortRecv(childrens);
             var rootDir = {
-                _id: results.root.id,
+                _id: results.root._id,
                 type: 'folder',
                 name: 'My Cubbyhole',
                 children: childrens
             };
-            res.json({
-                success: true,
+            res.send(200, {
                 data: [rootDir]
             });
         });
@@ -340,24 +336,24 @@ module.exports = function (app) {
                 var parent = req.body.parent || item.parent._id.toString();
 
                 async.waterfall([
-                    function (cb) {
+                    function (next) {
                         // Check if an item with same parent and name exists,
                         // rename if needed
                         Item.findOne({name: name, parent: parent, type: item.type, owner: item.owner}, function (err, i) {
-                            if (err) return cb(err);
+                            if (err) return next(err);
                             if (i) name = Utils.rename(name);
 
-                            cb();
+                            next();
                         });
                     },
-                    function (cb) {
+                    function (next) {
                         var oldParent = item.parent;
                         // Retrieve new parent
                         Item.findOne({_id: parent}, function (err, newParent) {
-                            if (!newParent) return cb(true, 400);
+                            if (!newParent) return next(true, 400);
 
                             item.getDirPath(function (err, oldPath) {
-                                if (err) return cb(err);
+                                if (err) return next(err);
 
                                 item.name = name;
                                 item.parent = newParent._id;
@@ -368,13 +364,13 @@ module.exports = function (app) {
                                 if (oldParent.isShared && !newParent.isShared ||
                                     !oldParent.isShared && newParent.isShared)
                                     item.setShared(newParent.isShared, function (err, uitem) {
-                                        if (err) return cb(err);
-                                        cb(null, oldPath, uitem);
+                                        if (err) return next(err);
+                                        next(null, oldPath, uitem);
                                     });
                                 else
                                     item.save(function (err, uitem) {
-                                        if (err) return cb(err);
-                                        cb(null, oldPath, uitem);
+                                        if (err) return next(err);
+                                        next(null, oldPath, uitem);
                                     })
                             });
                         });
