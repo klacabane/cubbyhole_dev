@@ -8,7 +8,7 @@ var mongoose = require('mongoose'),
 
 /* Properties */
 var userSchema = new mongoose.Schema({
-	email: String,
+	email: {type: String, lowercase: true, trim: true},
 	password: String,
 	registrationDate: { type: Date, default: Date.now },
 	currentPlan: { type: mongoose.Schema.Types.ObjectId, ref: 'UserPlan' },

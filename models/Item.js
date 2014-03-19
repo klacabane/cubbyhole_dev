@@ -4,7 +4,8 @@ var mongoose = require('mongoose'),
 	fs = require('fs-extra'),
     path = require('path'),
     async = require('async'),
-    Utils = require('../tools/utils');
+    Utils = require('../tools/utils'),
+    User = require('../models/User');
 
 var itemSchema = new mongoose.Schema({
 	name: 		    String,
@@ -19,7 +20,11 @@ var itemSchema = new mongoose.Schema({
     isPublic:       Boolean,
     link: {
         url:            String,
-        creationDate:   Date
+        creationDate:   Date,
+        recipients: [{
+            _id:        {type: mongoose.Schema.Types.ObjectId},
+            email:      String
+        }]
     }
 });
 
@@ -147,6 +152,15 @@ itemSchema.methods.setShared = function (value, callback) {
                 });
             });
     });
+};
+
+itemSchema.methods.removeLinkRecipient = function (id) {
+    for (var i = 0, length = this.link.recipients.length; i < length; i++) {
+        if (this.link.recipients[i]._id == id) {
+            this.link.recipients.splice(i, 1);
+            break;
+        }
+    }
 };
 
 /*

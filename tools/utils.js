@@ -112,6 +112,10 @@ var Utils = {
             if (details.hasOwnProperty('share')) {
                 options.subject = details.from.email + ' wants to share the ' + details.item.type + ' ' + details.item.name + ' with you.';
                 options.html = "<a href='http://localhost:3000/share/confirm/" + details.share + "/" + token + "''>View the " + details.item.type + "</a>";
+            } else if (details.hasOwnProperty('link')) { // Link
+                var from = details.from ? details.from.email : 'Someone';
+                options.subject = from + ' invited you to see the resource ' + details.item.name + '.';
+                options.html = "<a href='http://localhost:8000/webapp.html#" + details.link + ">View the " + details.item.type + "</a>";
             } else { // Delete
                 options.subject = details.from.email + ' removed the ' + details.item.type + ' ' + details.item.name + '.';
             }
@@ -218,6 +222,14 @@ var Utils = {
                 res.push(arr[i]);
         }
         return res;
+    },
+    isMember: function (id, members) {
+        var lookup = {};
+        for (var i = 0, length = members.length; i < length; i++) {
+            lookup[members[i]._id.toString()] = members[i];
+        }
+
+        return lookup[id] !== undefined;
     }
 };
 

@@ -52,13 +52,7 @@ itemShareSchema.methods.removeMember = function (id) {
 
 
 itemShareSchema.methods.isMember = function (id) {
-    var lookup = {},
-        members = this.members;
-    for (var i = 0, length = members.length; i < length; i++) {
-        lookup[members[i]._id.toString()] = members[i];
-    }
-
-    return lookup[id] !== undefined;
+    return Utils.isMember(id, this.members);
 };
 
 itemShareSchema.methods.getMembership = function (id) {

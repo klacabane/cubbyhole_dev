@@ -20,7 +20,7 @@ module.exports = function (app) {
 
     	if (!email || !pw) return res.send(400);
 
-    	User.findOne({ email: email }, function (err, user) {
+    	User.findOne({email: email.toLowerCase().trim()}, function (err, user) {
 			if (err) return res.send(500);
 			if (!user) return res.send(404);
 
@@ -49,11 +49,11 @@ module.exports = function (app) {
 
 		if (!email || !pw) return res.send(400);
 
-		User.findOne({ email: email }, function (err, user) {
+		User.findOne({email: email.toLowerCase().trim()}, function (err, user) {
 			if (err) return res.send(500);
 			if (user) return res.send(422);
 			
-			new User({ email: email, password: pw })
+			new User({email: email, password: pw})
 				.save( function (err, u) {
 					if (err) return res.send(500);
 					

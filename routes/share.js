@@ -32,7 +32,7 @@ module.exports = function (app) {
                         // Validate receivers
                         receivers.forEach(function (r) {
                             fn.push(function (cb) {
-                                User.findOne({email: r.email})
+                                User.findOne({email: r.email.toLowerCase().trim()})
                                     .lean()
                                     .exec(function (err, u) {
                                         if (err || !u || u._id == from || !u.verified) return cb(err);
