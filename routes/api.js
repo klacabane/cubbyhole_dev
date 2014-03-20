@@ -23,6 +23,7 @@ module.exports = function (app) {
     	User.findOne({email: email.toLowerCase().trim()}, function (err, user) {
 			if (err) return res.send(500);
 			if (!user) return res.send(404);
+            if (!user.isAllowed) return res.send(403);
 
 			user.comparePw(pw, function (err, match) {
 				if (err) return res.send(500);
@@ -54,11 +55,11 @@ module.exports = function (app) {
 			if (user) return res.send(422);
 			
 			new User({email: email, password: pw})
-				.save( function (err, u) {
+				.save(function (err, u) {
 					if (err) return res.send(500);
 					
 					Utils.sendEmail(u, function (err) {
-						if (err) return res.send(500);		// delete user | send recursively?
+						if (err) return res.send(500);
 
 						res.send(201);
 					})

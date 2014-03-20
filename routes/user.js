@@ -28,6 +28,22 @@ module.exports = function (app) {
 	});
 
 	// PUT
+    app.put('/user/:id', mw.checkAuth, mw.isAdmin, mw.validateId, function (req, res) {
+        var isAllowed = req.body.isAllowed == 0 ? false : true;
+
+        User.findOne({_id: req.params.id}, function (err, user) {
+            if (err) return res.send(500);
+            if (!user) return res.send(404);
+
+            user.isAllowed = isAllowed;
+            user.save(function (err) {
+                if (err) return res.send(500);
+
+                res.send(200);
+            });
+        });
+    });
+
 
 	// DELETE
 };

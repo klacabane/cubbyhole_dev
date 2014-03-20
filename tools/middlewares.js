@@ -1,4 +1,5 @@
-var Utils = require('../tools/utils');
+var Utils = require('../tools/utils'),
+    User = require('../models/User');
 
 module.exports = {
 	checkAuth: function (req, res, next) {
@@ -22,5 +23,13 @@ module.exports = {
         res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
 
         next();
+    },
+    isAdmin: function (req, res, next) {
+        User.findOne({_id: req.user, isAdmin: true}, function (err, admin) {
+            if (err) return res.send(500);
+            if (!admin) return res.send(403);
+
+            next();
+        });
     }
 }

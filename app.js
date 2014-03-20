@@ -10,7 +10,8 @@ var express = require('express'),
 	cfg = require('./config'),
     mw = require('./tools/middlewares'),
 	fs = require('fs'),
-    cache = require('./tools/cache');
+    cache = require('./tools/cache'),
+    User = require('./models/User');
 
 var app = express();
 
@@ -48,6 +49,13 @@ mongoose.connect(cfg.db.address, function (err) {
 	});
 	*/
     cache.init();
+
+    // Create admin account if it doesnt exist
+    User.findOne({email: 'admin.cubbyhole@gmail.com'}, function (err, user) {
+        if (!user)
+            new User({email: 'admin.cubbyhole@gmail.com', verified: true, isAdmin: true, password: 'Supinf0cubbyhole'})
+                .save();
+    });
 });
 
 // fake storage folder

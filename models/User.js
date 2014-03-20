@@ -12,7 +12,9 @@ var userSchema = new mongoose.Schema({
 	password: String,
 	registrationDate: { type: Date, default: Date.now },
 	currentPlan: { type: mongoose.Schema.Types.ObjectId, ref: 'UserPlan' },
-	verified: Boolean
+	verified: Boolean,
+    isAdmin: Boolean,
+    isAllowed: {type: Boolean, default: true}
 });
 
 /*
@@ -21,7 +23,8 @@ var userSchema = new mongoose.Schema({
  	// create a free userPlan and mkdir if new user & hash pw on update/insert
  	userSchema.pre('save', function (next) {
  		var that = this;
- 		if (!this.isNew) {
+
+ 		if (!this.isNew || this.isAdmin) {
  			if (!this.isModified('password'))
  				next();
  			else
