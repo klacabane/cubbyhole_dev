@@ -3,7 +3,6 @@ cubbyhole_dev
 
 # Install
 
-For Windows Users:
 
 1) Download & install Python 2.7.6 (NOT THE 3.3!) http://www.python.org/getit/
 
@@ -11,7 +10,7 @@ For Windows Users:
 
 	npm install -g node-gyp
 
-3) Download & install OpenSSL for Windows (NOT THE LIGHT VERSION!) (Ex: Win64 OpenSSL v1.0.1f) http://slproweb.com/products/Win32OpenSSL.html
+3) For Windows: Download & install OpenSSL for Windows (NOT THE LIGHT VERSION!) (Ex: Win64 OpenSSL v1.0.1f) http://slproweb.com/products/Win32OpenSSL.html
 
 4) Git bash on the projet folder
 
