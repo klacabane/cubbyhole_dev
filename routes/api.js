@@ -81,17 +81,19 @@ module.exports = function (app) {
         var user = Utils.getTokenUser(req.params.token);
         if (!user) return res.render('index', {locals: {error: 'Invalid token.'}});
 
-        ItemShare.findOne({item: req.params.id}, function (err, ishare) {
-            if (err) return res.render('index', {locals: {error: err}});
-
-            ishare.getMembership(user)
-                .accepted = true;
-            ishare.save(function (err) {
+        ItemShare.findOne({item: req.params.id})
+            .populate('item')
+            .exec(function (err, ishare) {
                 if (err) return res.render('index', {locals: {error: err}});
 
-                res.redirect('http://localhost:8000/webapp.html#/files');
+                ishare.getMembership(user)
+                    .accepted = true;
+                ishare.save(function (err) {
+                    if (err) return res.render('index', {locals: {error: err}});
+
+                    res.redirect('http://localhost:8000/webapp.html#/files?path=My Cubbyhole,' + ishare.item.name);
+                });
             });
-        });
     });
 
 };

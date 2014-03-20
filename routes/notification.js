@@ -6,14 +6,26 @@ module.exports = function (app) {
         var userId = req.user;
         Notification.find({user: userId}, function (err, notes) {
             if (err) return res.send(500);
-            var results = [];
+
             notes.forEach(function (note) {
                 note.createMessage();
-                results.push(note);
             });
 
-            res.send(201, {
-                data: results
+            res.send(200, {
+                data: notes
+            });
+        });
+    });
+
+    app.delete('/notification/:id', mw.checkAuth, mw.validateId, function (req, res) {
+        Notification.findOne({_id: req.params.id}, function (err, note) {
+            if (err) return res.send(500);
+            if (!note) return res.send(404);
+            if (req.user !== note.user.toString()) return res.send(403);
+
+            note.remove(function (err) {
+                if (err) return res.send(500);
+                res.send(200);
             });
         });
     });
