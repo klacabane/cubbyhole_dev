@@ -53,7 +53,7 @@ mongoose.connect(cfg.db.address, function (err) {
     // Create admin account if it doesnt exist
     User.findOne({email: 'admin.cubbyhole@gmail.com'}, function (err, user) {
         if (!user)
-            new User({email: 'admin.cubbyhole@gmail.com', verified: true, isAdmin: true, password: 'Supinf0cubbyhole'})
+            new User({email: 'cubbyholeadm@gmail.com', verified: true, isAdmin: true, password: 'Supinf0cubbyhole'})
                 .save();
     });
 });

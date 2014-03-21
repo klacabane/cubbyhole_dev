@@ -181,8 +181,9 @@ var Utils = {
 
         for (var i = 0, length = childrens.length; i < length; i++) {
             var c = childrens[i];
-            if (c.type == 'folder') {
-                if (c._id.toString() == item.parent.toString()) {
+
+            if (c.type === 'folder') {
+                if (c._id.toString() === item.parent.toString()) {
                     c.children.push(item);
                     inserted = true;
                     break;
@@ -190,6 +191,7 @@ var Utils = {
                     subChildrens = subChildrens.concat(c.children);
                 }
             }
+
         }
         if (!inserted)
             Utils.insertAtParentPath(subChildrens, item);

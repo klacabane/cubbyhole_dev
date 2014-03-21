@@ -1,12 +1,18 @@
 var mongoose = require('mongoose'),
     Item = require('../models/Item'),
     Utils = require('../tools/Utils'),
-    async = require('async');
+    async = require('async'),
+    path = require('path');
 
 var memberSchema = new mongoose.Schema({
     email: String,
     accepted: Boolean,
-    permissions: Number
+    permissions: Number,
+    custom: {
+        name: String,
+        parent: {type: mongoose.Schema.Types.ObjectId},
+        rootRef: {type: mongoose.Schema.Types.ObjectId}
+    }
 });
 
 var itemShareSchema = new mongoose.Schema({
@@ -38,6 +44,56 @@ itemShareSchema.methods.format = function () {
     delete obj.item;
 
     return obj;
+};
+
+itemShareSchema.methods.formatWithPath = function (user, callback) {
+    var obj = this.toObject(),
+        that = this;
+
+    obj._id = obj.item._id;
+    obj.name = obj.item.name;
+    obj.lastModified = obj.item.lastModified;
+
+    delete obj.item;
+
+    if (user === this.owner._id.toString()) {
+        this.item.getDirPath(function (err, dirPath) {
+            if (err) return callback(err);
+
+            var p = dirPath.split(path.sep);
+            p.splice(0, 2, 'My Cubbyhole');
+            obj.path = p.join(',');
+
+            callback(null, obj);
+        });
+    } else {
+        var membership = this.getMembership(user);
+
+        Item.findOne({_id: membership.custom.parent}, function (err, customParent) {
+            if (err) return callback(err);
+
+            obj.name = membership.custom.name || obj.name;
+
+            if (!customParent) {
+                membership.custom.parent = membership.custom.rootRef;
+                obj.path = 'My Cubbyhole,' + obj.name;
+                that.save(function (err) {
+                    if (err) return callback(err);
+
+                    callback(null, obj);
+                });
+            } else {
+                customParent.getDirPath(function (err, dirPath) {
+                    if (err) return callback(err);
+
+                    var p = dirPath.split(path.sep);
+                    p.splice(0, 2, 'My Cubbyhole');
+                    obj.path = p.join(',') + ',' + obj.name;
+                    callback(null, obj);
+                });
+            }
+        });
+    }
 };
 
 itemShareSchema.methods.removeMember = function (id) {

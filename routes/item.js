@@ -42,8 +42,11 @@ module.exports = function (app) {
                     .save(function (err, newItem) {
 					if (err) return res.send(500);
 
-					res.send(201, {
-						data: newItem
+                    var itemObj = newItem.toObject();
+                    itemObj.meta = meta.size ? meta : {size: 0};
+
+                    res.send(201, {
+						data: itemObj
 					});
 				});
 			});
