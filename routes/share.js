@@ -14,7 +14,7 @@ module.exports = function (app) {
      *
      */
     app.post('/share/:id', mw.checkAuth, mw.validateId, function (req, res) {
-        var itemId = req.params.id,
+        var itemId = req.params.id || req.body.id,
             receivers = req.body.with,
             from = req.user;
 
@@ -24,7 +24,6 @@ module.exports = function (app) {
             },
             recipients: function (callback) {
                 ItemShare.findOne({item: itemId})
-                    .populate('owner')
                     .exec(function (err, ishare) {
                         if (err) return callback(err);
 
@@ -58,11 +57,11 @@ module.exports = function (app) {
                     });
             },
             from: function (callback) {
-                User.findOne({_id: from}, function (err, from) {
+                User.findOne({_id: from}, function (err, sender) {
                     if (err) return callback(err);
                     callback(null, {
-                        _id: from._id,
-                        email: from.email
+                        _id: sender._id,
+                        email: sender.email
                     });
                 });
             }
@@ -111,8 +110,10 @@ module.exports = function (app) {
                     async.series([
                         function (cb) {
                             if (!ishare) return cb();
-                            if (from != ishare.owner._id &&
-                                ishare.getMembership(from).permissions === 0) return cb(403);
+
+                            var membership = ishare.getMembership(from);
+                            if (from !== ishare.owner._id.toString() &&
+                                (membership && membership.permissions === 0)) return cb(403);
 
                             // Update existing sharing members
                             ishare.members = ishare.members.concat(members);

@@ -6,7 +6,9 @@ var User = require('../models/User'),
     cache = require('../tools/cache');
 
 module.exports = function (app) {
-	// GET
+	/*
+	 *  GET
+	 */
 	app.get('/user/:id', mw.checkAuth, mw.validateId, function (req, res) {
         //if (req.user !== req.params.id) return res.send(403);
 
@@ -26,6 +28,26 @@ module.exports = function (app) {
                 });
 		    });
 	});
+
+    app.get('/user/:email', mw.checkAuth, function (req, res) {
+        //if (req.user !== req.params.id) return res.send(403);
+
+        User.findOne({email: req.params.email, isAdmin: {$exists: false}}, 'id email registrationDate currentPlan verified isAllowed')
+            .populate('currentPlan')
+            .exec(function (err, user) {
+                if (err) return res.send(500);
+                if (!user) return res.send(404);
+
+                var obj = user.format(),
+                    planId = user.currentPlan.plan;
+
+                obj.currentPlan.plan = cache.getPlan(planId);
+
+                res.send(200, {
+                    data: obj
+                });
+            });
+    });
 
     app.get('/user', mw.checkAuth, mw.isAdmin, function (req, res) {
         User.find({isAdmin: {$exists: false}}, '_id email registrationDate currentPlan verified isAllowed')

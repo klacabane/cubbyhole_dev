@@ -202,6 +202,7 @@ module.exports = function (app) {
 
                                             Utils.setChildrensPerms(itemObj.children, membership.permissions);
                                             itemObj.permissions = membership.permissions;
+                                            itemObj.root = true;
 
                                             cb(null, itemObj);
                                         });
@@ -295,27 +296,49 @@ module.exports = function (app) {
 			if (err) return res.send(500);
 			if (!item) return res.send(404);
 
-            async.series([
-                // Remove Sharing entry if any
-                // Make sure user is allowed
-                function (cb) {
-                    User.hasPermissions({user: user, item: item, permissions: 1}, function (err, ok) {
-                        if (err) return cb(err);
-                        if (!ok) return cb(true, 403);
+            var isOwner = user === item.owner.toString();
 
-                        ItemShare.getItemShare(item, function (err, ishare) {
-                            if (err || !ishare) return cb(err);
-
-                            if (ishare.item.toString() === item._id.toString())
-                                ishare.remove(cb);
-                            else
-                                cb();
-                        });
-                    });
+            async.parallel([
+                function (next) {
+                    if (item.isShared) return next();
+                    // Item is not shared,
+                    // make sure user is the owner
+                    if (isOwner)
+                        item.remove(next);
+                    else
+                        next(true, 403);
                 },
-                // Remove item
-                function (cb) {
-                    item.remove(cb);
+                function (next) {
+                    if (!item.isShared) return next();
+                    // Item is shared,
+                    // find the user relationship
+                    ItemShare.getItemShare(item, function (err, ishare) {
+                        if (err || !ishare) return next(true);
+
+                        var membership = ishare.getMembership(user);
+
+                        if (ishare.item.toString() === item._id.toString()) {
+                            // Item is the root of the sharing
+                            if (isOwner) {
+                                ishare.remove(function (err) {
+                                    if (err) return next(err);
+                                    item.remove(next);
+                                });
+                            } else if (membership) {
+                                ishare.removeMember(user);
+                                ishare.save(next);
+                            } else {
+                                next(true, 403);
+                            }
+                        } else {
+                            // Item is a child of a shared folder
+                            if (isOwner || (membership && membership.permissions === 1)) {
+                                item.remove(next);
+                            } else {
+                                next(true, 403);
+                            }
+                        }
+                    });
                 }
             ], function (err, codes) {
                 if (err) return res.send(codes[0] || 500);

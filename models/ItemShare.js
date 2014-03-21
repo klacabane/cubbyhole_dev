@@ -112,7 +112,7 @@ itemShareSchema.methods.isMember = function (id) {
 
 itemShareSchema.methods.getMembership = function (id) {
     var members = this.members,
-        membership = {};
+        membership;
     for (var i = 0, length = members.length; i < length; i++) {
         if (members[i]._id == id)
             membership = members[i];
