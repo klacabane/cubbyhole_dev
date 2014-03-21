@@ -51,7 +51,7 @@ mongoose.connect(cfg.db.address, function (err) {
     cache.init();
 
     // Create admin account if it doesnt exist
-    User.findOne({email: 'admin.cubbyhole@gmail.com'}, function (err, user) {
+    User.findOne({email: 'cubbyholeadm@gmail.com'}, function (err, user) {
         if (!user)
             new User({email: 'cubbyholeadm@gmail.com', verified: true, isAdmin: true, password: 'Supinf0cubbyhole'})
                 .save();
