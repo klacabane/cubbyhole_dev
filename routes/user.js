@@ -28,7 +28,7 @@ module.exports = function (app) {
 	});
 
     app.get('/user', mw.checkAuth, mw.isAdmin, function (req, res) {
-        User.find({isAdmin: {$exists: false}}, '_id email registrationDate currentPlan')
+        User.find({isAdmin: {$exists: false}}, '_id email registrationDate currentPlan verified isAllowed')
             .populate('currentPlan')
             .exec(function (err, users) {
                 if (err) return res.send(500);
