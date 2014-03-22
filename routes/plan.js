@@ -4,7 +4,19 @@ var Plan = require('../models/Plan'),
 
 module.exports = function (app) {
 	// POST
-    app.post('/plan', mw.checkAuth, function (req, res) {
+    app.post('/plan', mw.checkAuth, mw.isAdmin, function (req, res) {
+        var attrs = req.body.plan;
+
+        new Plan(attrs)
+            .save(function (err, plan) {
+                if (err) return res.send(500);
+
+                res.send(200, {
+                    data: plan
+                });
+
+                cache.init();
+            });
 
     });
 
@@ -32,12 +44,30 @@ module.exports = function (app) {
     });
 
 	// PUT
-	app.put('/plan/:id', mw.checkAuth, mw.validateId, function (req, res) {
-		
+	app.put('/plan/:id', mw.checkAuth, mw.isAdmin, mw.validateId, function (req, res) {
+        var update = req.body.plan;
+        Plan.findOneAndUpdate({_id: req.params.id}, update, function (err, plan) {
+            if (err) return res.send(500);
+            res.send(200, {
+                data: plan
+            });
+
+            cache.init();
+        });
 	});
 
 	// DELETE
-    app.delete('/plan/:id', mw.checkAuth, mw.validateId, function (req, res) {
+    app.delete('/plan/:id', mw.checkAuth, mw.isAdmin, mw.validateId, function (req, res) {
+        Plan.findOne({_id: req.params.id}, function (err, plan) {
+            if (err) return res.send(500);
+            if (!plan) return res.send(404);
 
+            plan.remove(function (err) {
+                if (err) return res.send(500);
+                res.send(200);
+
+                cache.init();
+            });
+        });
     });
 };

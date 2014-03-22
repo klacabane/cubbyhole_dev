@@ -10,8 +10,6 @@ module.exports = function (app) {
 	 *  GET
 	 */
 	app.get('/user/:id', mw.checkAuth, mw.validateId, function (req, res) {
-        //if (req.user !== req.params.id) return res.send(403);
-
 		User.findOne({_id: req.params.id, isAdmin: {$exists: false}}, 'id email registrationDate currentPlan')
             .populate('currentPlan')
             .exec(function (err, user) {
@@ -29,9 +27,7 @@ module.exports = function (app) {
 		    });
 	});
 
-    app.get('/user/:email', mw.checkAuth, function (req, res) {
-        //if (req.user !== req.params.id) return res.send(403);
-
+    app.get('/user/email/:email', mw.checkAuth, function (req, res) {
         User.findOne({email: req.params.email, isAdmin: {$exists: false}}, 'id email registrationDate currentPlan verified isAllowed')
             .populate('currentPlan')
             .exec(function (err, user) {

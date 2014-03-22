@@ -40,13 +40,20 @@ module.exports = function (app) {
 
                                         // Receiver is a ch User and is not sharing this item yet
                                         // Create new membership
-                                        var member = {
-                                            _id: u._id,
-                                            email: u.email,
-                                            accepted: false,
-                                            permissions: r.permissions
-                                        };
-                                        cb(null, member);
+                                        Item.findOne({owner: u._id, isRoot: true}, function (err, rootFolder) {
+                                            if (err) return cb(err);
+
+                                            var member = {
+                                                _id: u._id,
+                                                email: u.email,
+                                                accepted: false,
+                                                permissions: r.permissions,
+                                                custom: {
+                                                    parent: rootFolder._id
+                                                }
+                                            };
+                                            cb(null, member);
+                                        });
                                     });
                             });
                         });
@@ -229,7 +236,7 @@ module.exports = function (app) {
                 var user = req.user;
                 async.parallel([
                     function (cb) {
-                        if (user != ishare.owner._id) return cb();
+                        if (user !== ishare.owner._id.toString()) return cb();
 
                         // User is the owner
                         // if a member is given, only delete his membership

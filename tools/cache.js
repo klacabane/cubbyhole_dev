@@ -9,6 +9,8 @@ var Cache = {
         _bandwidths: {}
     },
     init: function (callback) {
+        this.store.Plans = [];
+        this.store._plans = this.store._bandwidths = {};
         Bandwidth.find({}, 'download upload')
             .exec(function (err, bws) {
                 Cache._addBandwidths(bws);

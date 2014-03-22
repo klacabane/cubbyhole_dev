@@ -180,21 +180,36 @@ var Utils = {
         if (!childrens.length) return;
 
         for (var i = 0, length = childrens.length; i < length; i++) {
-            var c = childrens[i];
+            var child = childrens[i];
 
-            if (c.type === 'folder') {
-                if (c._id.toString() === item.parent.toString()) {
-                    c.children.push(item);
+            if (child.type === 'folder') {
+                if (child._id.toString() === item.parent.toString()) {
+                    child.children.push(item);
                     inserted = true;
                     break;
                 } else {
-                    subChildrens = subChildrens.concat(c.children);
+                    subChildrens = subChildrens.concat(child.children);
                 }
             }
 
         }
         if (!inserted)
             Utils.insertAtParentPath(subChildrens, item);
+    },
+    getSharedChilds: function (childrens) {
+        var results = [];
+
+        for (var i = 0, length = childrens.length; i < length; i++) {
+            var child = childrens[i];
+
+            if (child.type === 'folder') {
+                if (child.isShared)
+                    results.push(child._id)
+                else
+                   results = results.concat(Utils.getSharedChilds(child.children));
+            }
+        }
+        return results;
     },
     getSize: function (dirPath, callback) {
         fs.stat(dirPath, function (err, stats) {

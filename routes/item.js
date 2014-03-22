@@ -201,6 +201,7 @@ module.exports = function (app) {
                                             if (err) return cb(err);
 
                                             Utils.setChildrensPerms(itemObj.children, membership.permissions);
+                                            itemObj.parent = membership.custom.parent;
                                             itemObj.permissions = membership.permissions;
                                             itemObj.root = true;
 
@@ -216,10 +217,13 @@ module.exports = function (app) {
         function (err, results) {
             if (err) return res.send(500);
 
-            var childrens = results.root.children
-                .concat(results.shares);
+            results.shares.forEach(function (share) {
+                Utils.insertAtParentPath([results.root], share);
+            });
 
+            var childrens = results.root.children;
             Utils.sortRecv(childrens);
+
             var rootDir = {
                 _id: results.root._id,
                 type: 'folder',
@@ -303,10 +307,49 @@ module.exports = function (app) {
                     if (item.isShared) return next();
                     // Item is not shared,
                     // make sure user is the owner
-                    if (isOwner)
-                        item.remove(next);
-                    else
+                    if (!isOwner)
                         next(true, 403);
+                    else
+                        async.parallel([
+                            // Check if any of items' children is shared,
+                            // and delete shares if any
+                            function (callback) {
+                                // Delete his owners' shares
+                                item.getChildrenTree(function (err, childrens) {
+                                    if (err) return callback(err);
+
+                                    var sharedChilds = Utils.getSharedChilds(childrens);
+                                    async.each(
+                                        sharedChilds,
+                                        function (sharedChild, cb) {
+                                            ItemShare.findOne({item: sharedChild}, function (err, ishare) {
+                                                if (err || !ishare) return cb(true);
+
+                                                ishare.remove(cb);
+                                            });
+                                        }, callback);
+                                });
+                            },
+                            function (callback) {
+                                // And his memberships' shares
+                                ItemShare.find({$or: [{'owner._id': user}, {'members._id': user}], 'members.custom.parent': item._id})
+                                    .exec(function (err, ishares) {
+                                        if (err) return callback(err);
+
+                                        async.each(
+                                            ishares,
+                                            function (ishare, cb) {
+                                                ishare.removeMember(user);
+                                                ishare.save(cb);
+                                            },
+                                            callback);
+                                    });
+                            }],
+                        function (err) {
+                            if (err) return next(err);
+
+                            item.remove(next);
+                        });
                 },
                 function (next) {
                     if (!item.isShared) return next();
@@ -351,8 +394,8 @@ module.exports = function (app) {
 	 *	PUT
 	 *  Update resource name or parent
 	 */
-	app.put('/item/:id', mw.checkAuth, mw.validateId, function (req, res) {
-		Item.findOne({_id: req.params.id})
+    app.put('/item/:id', mw.checkAuth, mw.validateId, function (req, res) {
+        Item.findOne({_id: req.params.id})
             .populate('parent')
             .exec(function (err, item) {
                 if (err) return res.send(500);
@@ -420,6 +463,6 @@ module.exports = function (app) {
                     });
                 });
             });
-	});
+    });
 
 };

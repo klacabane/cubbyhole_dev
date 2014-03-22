@@ -47,8 +47,7 @@ itemShareSchema.methods.format = function () {
 };
 
 itemShareSchema.methods.formatWithPath = function (user, callback) {
-    var obj = this.toObject(),
-        that = this;
+    var obj = this.toObject();
 
     obj._id = obj.item._id;
     obj.name = obj.item.name;
@@ -74,24 +73,14 @@ itemShareSchema.methods.formatWithPath = function (user, callback) {
 
             obj.name = membership.custom.name || obj.name;
 
-            if (!customParent) {
-                membership.custom.parent = membership.custom.rootRef;
-                obj.path = 'My Cubbyhole,' + obj.name;
-                that.save(function (err) {
-                    if (err) return callback(err);
+            customParent.getDirPath(function (err, dirPath) {
+                if (err) return callback(err);
 
-                    callback(null, obj);
-                });
-            } else {
-                customParent.getDirPath(function (err, dirPath) {
-                    if (err) return callback(err);
-
-                    var p = dirPath.split(path.sep);
-                    p.splice(0, 2, 'My Cubbyhole');
-                    obj.path = p.join(',') + ',' + obj.name;
-                    callback(null, obj);
-                });
-            }
+                var p = dirPath.split(path.sep);
+                p.splice(0, 2, 'My Cubbyhole');
+                obj.path = p.join(',') + ',' + obj.name;
+                callback(null, obj);
+            });
         });
     }
 };
