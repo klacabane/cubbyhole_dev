@@ -5,7 +5,7 @@ var Item = require('../models/Item'),
 	async = require('async'),
 	Utils = require('../tools/utils'),
 	mw = require('../tools/middlewares'),
-    admZip = require('adm-zip'),
+    easyZip = require('easy-zip').EasyZip,
     fs = require('fs-extra');
 
 module.exports = function (app) {
@@ -252,23 +252,10 @@ module.exports = function (app) {
                     if (item.type == 'file') {
                         res.download(dirPath);
                     } else {
-                        item.getChildren(function (err, childrens) {
-                            if (err) return res.send(500);
-                            if (childrens.length === 0) return res.send(405);
+                        var zip = new easyZip();
 
-                            var zip = new admZip();
-                            zip.addLocalFolder(dirPath, item.name);
-
-                            zip.toBuffer(function (buffer) {
-                                res.writeHead(200, {
-                                    'Content-Type': 'application/octet-stream',
-                                    'Content-Length': buffer.length,
-                                    'Content-Disposition': 'attachment; filename=' + [item.name, '.zip'].join('')
-                                });
-                                res.write(buffer);
-                            }, function () {
-                                res.send(500);
-                            });
+                        zip.zipFolder(dirPath, function () {
+                            zip.writeToResponse(res, item.name);
                         });
                     }
                 });
