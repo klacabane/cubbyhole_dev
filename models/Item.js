@@ -174,7 +174,7 @@ itemSchema.methods.getSize = function (callback) {
         if (err) return callback(err);
 
         fs.stat(dirPath, function (err, stats) {
-            var total = stats.size;
+            var total = stats.isDirectory() ? 0 : stats.size;
             that.getChildren(function (err, childrens) {
                 if (err) return callback(err);
 
