@@ -45,13 +45,27 @@ module.exports = function (app) {
             });
     });
 
-    app.get('/user', mw.checkAuth, mw.isAdmin, function (req, res) {
-        User.find({isAdmin: {$exists: false}}, '_id email registrationDate currentPlan verified isAllowed')
+    app.get('/user/:start/:limit', mw.checkAuth, mw.isAdmin, function (req, res) {
+        var startIndex = req.params.start || 0,
+            limit = parseInt(req.params.limit) || 0;
+
+        if (limit > 0) ++limit;
+
+        User.find({isAdmin: {$exists: false}})
+            .select('_id email registrationDate currentPlan verified isAllowed')
+            .sort({email: 1})
+            .skip(startIndex)
+            .limit(limit)
             .populate('currentPlan')
             .exec(function (err, users) {
                 if (err) return res.send(500);
 
-                var results = [];
+                var results = [],
+                    hasMore = false;
+                if (users.length === limit) {
+                    users.pop();
+                    hasMore = true;
+                }
                 users.forEach(function (user) {
                     var userObj = user.format(),
                         planId = user.currentPlan.plan;
@@ -61,7 +75,8 @@ module.exports = function (app) {
                 });
 
                 res.send(200, {
-                    data: results
+                    data: results,
+                    hasMore: hasMore
                 });
             });
     });

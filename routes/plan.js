@@ -25,7 +25,9 @@ module.exports = function (app) {
 
     });
 
-	// GET
+	/*
+	 * GET
+	 */
 	app.get('/plan/:id', mw.checkAuth, mw.validateId, function (req, res) {
         var planId = req.params.id;
         var plan = cache.getPlan(planId);
@@ -40,6 +42,12 @@ module.exports = function (app) {
     app.get('/plan', function (req, res) {
         res.send(200, {
             data: cache.store.Plans
+        });
+    });
+
+    app.get('/bandwidth', /*mw.checkAuth, mw.isAdmin,*/ function (req, res) {
+        res.send(200, {
+            data: cache.store.Bandwidths
         });
     });
 
