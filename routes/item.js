@@ -2,10 +2,13 @@ var Item = require('../models/Item'),
     ItemShare = require('../models/ItemShare'),
     User = require('../models/User'),
     Notification = require('../models/Notification'),
+    DailyTransfer = require('../models/UserDailyTransfer'),
+    UserPlan = require('../models/UserPlan'),
 	async = require('async'),
 	Utils = require('../tools/utils'),
 	mw = require('../tools/middlewares'),
     easyZip = require('easy-zip').EasyZip,
+    cache = require('../tools/cache'),
     fs = require('fs-extra');
 
 module.exports = function (app) {
@@ -28,28 +31,39 @@ module.exports = function (app) {
 
 			if (type == 'folder') {
 				name = req.body.name;
+                meta = {size: 0};
 			} else {
 				var f = req.files[Object.keys(req.files)[0]];
 				name = f.name;
 				meta = Utils.getFileMeta(f);
 			}
 
-			Item.findOne({name: name, type: type, parent: parent, owner: u}, function (err, item) {
-				if (err) return res.send(500);
-				if (item) name = Utils.rename(name);
+            User.findOne({_id: req.user})
+                .populate('currentPlan')
+                .exec(function (err, user) {
+                    if (err || !user) return res.send(500);
 
-				new Item({name: name, type: type, owner: u, parent: parent, meta: meta, isShared: par.isShared})
-                    .save(function (err, newItem) {
-					if (err) return res.send(500);
+                    var currentPlan = user.currentPlan;
+                    if (Utils.bytesToMb(currentPlan.usage.bandwidth.upload + meta.size) > cache.getPlan(user.currentPlan.plan).bandwidth.upload)
+                        return res.send(403);
 
-                    var itemObj = newItem.toObject();
-                    itemObj.meta = meta.size ? meta : {size: 0};
+                    currentPlan.usage.bandwidth.upload += meta.size;
+                    currentPlan.save(function (err) {
+                        Item.findOne({name: name, type: type, parent: parent, owner: u}, function (err, item) {
+                            if (err) return res.send(500);
+                            if (item) name = Utils.rename(name);
 
-                    res.send(201, {
-						data: itemObj
-					});
-				});
-			});
+                            new Item({name: name, type: type, owner: u, parent: parent, meta: meta, isShared: par.isShared})
+                                .save(function (err, newItem) {
+                                if (err) return res.send(500);
+
+                                res.send(201, {
+                                    data: newItem
+                                });
+                            });
+                        });
+                    });
+                });
 		});
 	});
 
@@ -238,6 +252,7 @@ module.exports = function (app) {
 
     /*
      *  GET
+     *  Download
      *  Returns resource ( file or folder.zip ) buffer
      */
 	app.get('/item/:id/download/:token?', mw.validateId, function (req, res) {
@@ -262,7 +277,25 @@ module.exports = function (app) {
             };
 
             if (item.isPublic)
-                download();
+                User.findOne({_id: item.owner})
+                    .populate('currentPlan')
+                    .exec(function (err, user) {
+                        var userPlan = cache.getPlan(user.currentPlan.plan);
+
+                        user.getTodayTransfer(function (err, dailyTransfer) {
+                            item.getSize(function (err, size) {
+                                if (err) return res.send(500);
+                                if (Utils.bytesToMb(dailyTransfer.dataShared + size) > userPlan.sharedQuota) return res.send(403);
+
+                                dailyTransfer.dataShared += size;
+                                dailyTransfer.save(function (err) {
+                                    if (err) return res.send(500);
+
+                                    download();
+                                });
+                            });
+                        });
+                    });
             else
                 mw.checkAuth(req, res, function () {
                     // User is authenticated

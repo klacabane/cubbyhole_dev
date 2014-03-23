@@ -3,8 +3,10 @@ var mongoose = require('mongoose'),
 	UserPlan = require('../models/UserPlan'),
     Item = require('../models/Item'),
     ItemShare = require('../models/ItemShare'),
+    DailyTransfer = require('../models/UserDailyTransfer'),
 	async = require('async'),
-	bcrypt = require('bcrypt');
+	bcrypt = require('bcrypt'),
+    Utils = require('../tools/Utils');
 
 /* Properties */
 var userSchema = new mongoose.Schema({
@@ -12,7 +14,7 @@ var userSchema = new mongoose.Schema({
 	password: String,
 	registrationDate: { type: Date, default: Date.now },
 	currentPlan: { type: mongoose.Schema.Types.ObjectId, ref: 'UserPlan' },
-	verified: Boolean,
+	verified: {type: Boolean, default: false},
     isAdmin: Boolean,
     isAllowed: {type: Boolean, default: true}
 });
@@ -64,6 +66,57 @@ userSchema.methods.format = function () {
     delete obj.currentPlan.__v;
 
     return obj;
+};
+
+userSchema.methods.getPlanUsage = function (callback) {
+    var that = this;
+
+    async.parallel({
+        storage: function (next) {
+            Item.findOne({owner: that._id, isRoot: true}, function (err, rootFolder) {
+                if (err) return next(err);
+
+                rootFolder.getSize(function (err, size) {
+                    if (err) return next(err);
+
+                    next(null, Utils.bytesToMb(size));
+                });
+            });
+        },
+        share: function (next) {
+            that.getTodayTransfer(function (err, dailyTransfer) {
+                if (err) return next(err);
+
+                next(null, Utils.bytesToMb(dailyTransfer.dataShared));
+            });
+        },
+        bandwidth: function (next) {
+            UserPlan.findOne({_id: that.currentPlan}, function (err, currentPlan) {
+                if (err) return next(err);
+
+                var bwUsage = currentPlan.usage.bandwidth;
+                next(null, {
+                    download: Utils.bytesToMb(bwUsage.download),
+                    upload: Utils.bytesToMb(bwUsage.upload)
+                });
+            });
+        }
+    },
+    callback);
+};
+
+userSchema.methods.getTodayTransfer = function (callback) {
+    var query = {
+        user: this._id,
+        date: new Date().setHours(0,0,0,0)
+    };
+    DailyTransfer.findOne(query, function (err, dailyTransfer) {
+        if (err || dailyTransfer) return callback(err, dailyTransfer);
+
+        new DailyTransfer(query).save(function (err, newDailyTransfer) {
+            callback(err, newDailyTransfer);
+        });
+    });
 };
 
 	// updatePlan

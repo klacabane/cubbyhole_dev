@@ -3,7 +3,8 @@ var User = require('../models/User'),
     UserPlan = require('../models/UserPlan'),
     Plan = require('../models/Plan'),
 	mw = require('../tools/middlewares'),
-    cache = require('../tools/cache');
+    cache = require('../tools/cache'),
+    Utils = require('../tools/Utils');
 
 module.exports = function (app) {
 	/*
@@ -20,9 +21,16 @@ module.exports = function (app) {
                     planId = user.currentPlan.plan;
 
                 obj.currentPlan.plan = cache.getPlan(planId);
+                user.getPlanUsage(function (err, usage) {
+                    if (err) return res.send(500);
 
-                res.send(200, {
-                    data: obj
+                    obj.currentPlan.usage.storage = usage.storage;
+                    obj.currentPlan.usage.share = usage.share;
+                    obj.currentPlan.usage.bandwidth = usage.bandwidth;
+
+                    res.send(200, {
+                        data: obj
+                    });
                 });
 		    });
 	});
@@ -46,39 +54,44 @@ module.exports = function (app) {
     });
 
     app.get('/user/:start/:limit', mw.checkAuth, mw.isAdmin, function (req, res) {
-        var startIndex = req.params.start || 0,
+        var startIndex = parseInt(req.params.start) || 0,
             limit = parseInt(req.params.limit) || 0;
 
         if (limit > 0) ++limit;
 
-        User.find({isAdmin: {$exists: false}})
-            .select('_id email registrationDate currentPlan verified isAllowed')
-            .sort({email: 1})
-            .skip(startIndex)
-            .limit(limit)
-            .populate('currentPlan')
-            .exec(function (err, users) {
-                if (err) return res.send(500);
+        var query = {isAdmin: {$exists: false}};
 
-                var results = [],
-                    hasMore = false;
-                if (users.length === limit) {
-                    users.pop();
-                    hasMore = true;
-                }
-                users.forEach(function (user) {
-                    var userObj = user.format(),
-                        planId = user.currentPlan.plan;
+        User.count(query, function (err, rowNb) {
+            User.find(query)
+                .select('_id email registrationDate currentPlan verified isAllowed')
+                .sort({email: 1})
+                .skip(startIndex)
+                .limit(limit)
+                .populate('currentPlan')
+                .exec(function (err, users) {
+                    if (err) return res.send(500);
 
-                    userObj.currentPlan.plan = cache.getPlan(planId);
-                    results.push(userObj);
+                    var results = [],
+                        hasMore = false;
+                    if (users.length === limit) {
+                        users.pop();
+                        hasMore = true;
+                    }
+                    users.forEach(function (user) {
+                        var userObj = user.format(),
+                            planId = user.currentPlan.plan;
+
+                        userObj.currentPlan.plan = cache.getPlan(planId);
+                        results.push(userObj);
+                    });
+
+                    res.send(200, {
+                        data: results,
+                        hasMore: hasMore,
+                        total: rowNb
+                    });
                 });
-
-                res.send(200, {
-                    data: results,
-                    hasMore: hasMore
-                });
-            });
+        });
     });
 
 	// PUT

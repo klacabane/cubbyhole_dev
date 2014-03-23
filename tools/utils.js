@@ -236,6 +236,10 @@ var Utils = {
                 });
         });
     },
+    bytesToMb: function (bytes) {
+        if (bytes == 0) return 0;
+        return (bytes/1000000).toFixed(2);
+    },
     /*
      *  Array
      */
