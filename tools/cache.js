@@ -43,6 +43,9 @@ var Cache = {
     },
     getPlan: function (id) {
         return this.store._plans[id];
+    },
+    getBandwidth: function (id) {
+        return this.store._bandwidths[id];
     }
 };
 

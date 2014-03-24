@@ -11,8 +11,11 @@ module.exports = function (app) {
             .save(function (err, plan) {
                 if (err) return res.send(500);
 
+                var planObj = plan.toObject();
+                planObj.bandwidth = cache.getBandwidth(plan.bandwidth);
+
                 res.send(200, {
-                    data: plan
+                    data: planObj
                 });
 
                 cache.init();
@@ -56,8 +59,12 @@ module.exports = function (app) {
         var update = req.body.plan;
         Plan.findOneAndUpdate({_id: req.params.id}, update, function (err, plan) {
             if (err) return res.send(500);
+
+            var planObj = plan.toObject();
+            planObj.bandwidth = cache.getBandwidth(plan.bandwidth);
+
             res.send(200, {
-                data: plan
+                data: planObj
             });
 
             cache.init();

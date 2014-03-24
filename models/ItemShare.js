@@ -101,10 +101,13 @@ itemShareSchema.methods.isMember = function (id) {
 
 itemShareSchema.methods.getMembership = function (id) {
     var members = this.members,
+        userId = (typeof id === 'string') ? id : id.toString(),
         membership;
     for (var i = 0, length = members.length; i < length; i++) {
-        if (members[i]._id == id)
+        if (members[i]._id.toString() === userId) {
             membership = members[i];
+            break;
+        }
     }
     return membership;
 };

@@ -44,7 +44,8 @@ module.exports = function (app) {
                     if (err || !user) return res.send(500);
 
                     var currentPlan = user.currentPlan;
-                    if (Utils.bytesToMb(currentPlan.usage.bandwidth.upload + meta.size) > cache.getPlan(user.currentPlan.plan).bandwidth.upload)
+                    // Verify user's ability to upload
+                    if (Utils.bytesToMb(currentPlan.usage.bandwidth.upload + meta.size) > cache.getPlan(currentPlan.plan).bandwidth.upload)
                         return res.send(403);
 
                     currentPlan.usage.bandwidth.upload += meta.size;
@@ -151,7 +152,8 @@ module.exports = function (app) {
 
                         mw.checkAuth(req, res, function () {
                             User.hasPermissions({user: req.user, item: item}, function (err, ok) {
-                                if (err || !ok) return cb(err, 403);
+                                if (err) return cb(err);
+                                if (!ok) return cb(true, 403);
                                 cb();
                             });
                         });
@@ -282,6 +284,7 @@ module.exports = function (app) {
                     .exec(function (err, user) {
                         var userPlan = cache.getPlan(user.currentPlan.plan);
 
+                        // Update item's owner daily transfer
                         user.getTodayTransfer(function (err, dailyTransfer) {
                             item.getSize(function (err, size) {
                                 if (err) return res.send(500);
@@ -300,12 +303,32 @@ module.exports = function (app) {
                 mw.checkAuth(req, res, function () {
                     // User is authenticated
                     // now check if he is authorized
-                    User.hasPermissions({user: req.user, item: item}, function (err, ok) {
-                        if (err) return res.send(500);
-                        if (!ok) return res.send(403);
+                    User.findOne({_id: req.user})
+                        .populate('currentPlan')
+                        .exec(function (err, user) {
+                            if (err) return res.send(500);
 
-                        download();
-                    });
+                            User.hasPermissions({user: req.user, item: item}, function (err, ok) {
+                                if (err) return res.send(500);
+                                if (!ok) return res.send(403);
+
+                                item.getSize(function (err, size) {
+                                    if (err) return res.send(500);
+
+                                    var currentPlan = user.currentPlan;
+                                    // Verify user's ability to download
+                                    if (Utils.bytesToMb(currentPlan.usage.bandwidth.download + size) > cache.getPlan(currentPlan.plan).bandwidth.download)
+                                        return res.send(403);
+
+                                    currentPlan.usage.bandwidth.download += size;
+                                    currentPlan.save(function (err) {
+                                        if (err) return res.send(500);
+
+                                        download();
+                                    });
+                                });
+                            });
+                        });
                 });
 		});
 	});
