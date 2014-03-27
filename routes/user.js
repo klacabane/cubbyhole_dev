@@ -4,7 +4,7 @@ var User = require('../models/User'),
     Plan = require('../models/Plan'),
 	mw = require('../tools/middlewares'),
     cache = require('../tools/cache'),
-    Utils = require('../tools/Utils');
+    Utils = require('../tools/utils');
 
 module.exports = function (app) {
 	/**
@@ -75,7 +75,7 @@ module.exports = function (app) {
 
         var query = {isAdmin: {$exists: false}};
 
-        User.count(query, function (err, rowNb) {
+        User.count(query, function (err, rowsCount) {
             User.find(query)
                 .select('_id email registrationDate currentPlan verified isAllowed')
                 .sort({email: 1})
@@ -102,7 +102,7 @@ module.exports = function (app) {
                     res.send(200, {
                         data: results,
                         hasMore: hasMore,
-                        total: rowNb
+                        total: rowsCount
                     });
                 });
         });
@@ -132,16 +132,26 @@ module.exports = function (app) {
     /**
      *  DELETE
      */
-    app.delete('/user', mw.checkAuth, function (req, res) {
-        User.findOne({_id: req.user, deleted: false}, function (err, user) {
-            if (err || !user) return res.send(500);
+    function deleteUser(id, callback) {
+        User.findOne({_id: id, deleted: false}, function (err, user) {
+            if (err || !user) return callback(true);
 
             user.deleted = true;
-            user.save(function (err) {
-                if (err) return res.send(500);
+            user.save(callback);
+        });
+    };
 
-                res.send(200);
-            });
+    app.delete('/user', mw.checkAuth, function (req, res) {
+        deleteUser(req.user, function (err) {
+            if (err) return res.send(500);
+            res.send(200);
+        });
+    });
+
+    app.delete('/user/:id', mw.validateId, mw.isAdmin, function (req, res) {
+        deleteUser(req.params.id, function (err) {
+            if (err) return res.send(500);
+            res.send(200);
         });
     });
 };

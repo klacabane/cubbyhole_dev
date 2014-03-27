@@ -6,7 +6,7 @@ var mongoose = require('mongoose'),
     DailyTransfer = require('../models/UserDailyTransfer'),
 	async = require('async'),
 	bcrypt = require('bcrypt'),
-    Utils = require('../tools/Utils');
+    Utils = require('../tools/utils');
 
 /* Properties */
 var userSchema = new mongoose.Schema({

@@ -1,6 +1,6 @@
 var mongoose = require('mongoose'),
     Item = require('../models/Item'),
-    Utils = require('../tools/Utils'),
+    Utils = require('../tools/utils'),
     async = require('async'),
     path = require('path');
 

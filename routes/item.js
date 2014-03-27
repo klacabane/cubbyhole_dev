@@ -271,6 +271,7 @@ module.exports = function (app) {
 			if (err) return res.send(500);
 			if (!item) return res.send(404);
 
+            // Download func
             function download(dlLimit) {
                 item.getDirPath(function (err, dirPath) {
                     if (err) return res.send(500);
@@ -309,31 +310,68 @@ module.exports = function (app) {
 
             // We don't throttle the bandwidth on public downloads
             if (item.isPublic) {
-                // Assume user is a sharing's member,
-                // don't increment shared Quota
-                if (item.isShared && req.params.token)
-                    download();
-                else
+                // Updates user's dataShared property
+                // returns 403 as second param if sharedQuota Limit is reached
+                function updateDailyTransfer(callback) {
                     User.findOne({_id: item.owner})
                         .populate('currentPlan')
                         .exec(function (err, user) {
                             var userPlan = cache.getPlan(user.currentPlan.plan);
 
-                            // Update item's owner daily transfer
                             user.getTodayTransfer(function (err, dailyTransfer) {
                                 item.getSize(function (err, size) {
-                                    if (err) return res.send(500);
-                                    if (Utils.bytesToMb(dailyTransfer.dataShared + size) > userPlan.sharedQuota) return res.send(403);
+                                    if (err) return callback(err);
+                                    if (Utils.bytesToMb(dailyTransfer.dataShared + size) > userPlan.sharedQuota) return callback(true, 403);
 
                                     dailyTransfer.dataShared += size;
-                                    dailyTransfer.save(function (err) {
-                                        if (err) return res.send(500);
-
-                                        download();
-                                    });
+                                    dailyTransfer.save(callback);
                                 });
                             });
                         });
+                };
+
+                var token = req.get('X-Cub-AuthToken') || req.params.token;
+
+                // We need to identify the requester
+                // to increase or not the owner's sharedData
+
+                // Anonymous
+                if (!token) {
+                    // Update item's owner daily transfer
+                    updateDailyTransfer(function (err, code) {
+                        if (err) return res.send(code || 500);
+
+                        download();
+                    });
+                } else {
+                    // user is authenticated,
+                    // if item is shared and user is a member, don't count this download as sharedData
+                    mw.checkAuth(req, res, function () {
+                        if (req.user === item.owner.toString()) {
+                            download();
+                        } else if (!item.isShared) {
+                            updateDailyTransfer(function (err, code) {
+                                if (err) return res.send(code || 500);
+
+                                download();
+                            });
+                        } else {
+                            ItemShare.getItemShare(item, function (err, ishare) {
+                                if (err) return res.send(500);
+
+                                if (ishare.getMembership(req.user))
+                                    download();
+                                else
+                                    updateDailyTransfer(function (err, code) {
+                                        if (err) return res.send(code || 500);
+
+                                        download();
+                                    });
+
+                            });
+                        }
+                    });
+                }
             } else {
                 // Item is not public,
                 // proceed to user authorization

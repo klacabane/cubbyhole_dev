@@ -2,7 +2,8 @@ var User = require('../models/User'),
 	Utils = require('../tools/utils'),
 	Item = require('../models/Item'),
     ItemShare = require('../models/ItemShare'),
-    mw = require('../tools/middlewares');
+    mw = require('../tools/middlewares'),
+    cfg = require('../config.js');
 
 module.exports = function (app) {
     require('../routes/user')(app);
@@ -88,7 +89,7 @@ module.exports = function (app) {
 
     	User.findOneAndUpdate({_id: user}, {$set: {verified: true}}, function (err, user) {
     		if (err) return res.render('index', {locals: {error: err}});
-    		res.redirect('http://localhost:8000/index.html?email=' + user.email);
+    		res.redirect(cfg.webclient.address + '/index.html?email=' + user.email);
     	});
     });
 
@@ -110,7 +111,7 @@ module.exports = function (app) {
                 ishare.save(function (err) {
                     if (err) return res.render('index', {locals: {error: err}});
 
-                    res.redirect('http://localhost:8000/webapp.html#/files?path=My Cubbyhole,' + ishare.item.name);
+                    res.redirect(cfg.webclient.address + '/webapp.html#/files?path=My Cubbyhole,' + ishare.item.name);
                 });
             });
     });

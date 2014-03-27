@@ -111,21 +111,21 @@ var Utils = {
 
         if (typeof details === 'function') {    // Account Verification
             options.subject = "Cubbyhole signup confirmation";
-            options.html = "<a href='http://localhost:3000/auth/confirm/" + token + "''>Confirm your mail</a>";
+            options.html = "<a href='" + cfg.api.address + "/auth/confirm/" + token + "'>Confirm your mail</a>";
         } else {
             if (details.hasOwnProperty('share')) {
                 options.subject = details.from.email + ' wants to share the ' + details.item.type + ' ' + details.item.name + ' with you.';
-                options.html = "<a href='http://localhost:3000/share/confirm/" + details.share + "/" + token + "''>View the " + details.item.type + "</a>";
+                options.html = "<a href='" + cfg.api.address + "/share/confirm/" + details.share + "/" + token + "'>View the " + details.item.type + "</a>";
             } else if (details.hasOwnProperty('link')) { // Link
                 var from = details.from ? details.from.email : 'Someone';
                 options.subject = from + ' invited you to see the resource ' + details.item.name + '.';
-                options.html = "<a href='http://localhost:8000/webapp.html#" + details.link + "'>View the " + details.item.type + "</a>";
+                options.html = "<a href='" + cfg.webclient.address + "/webapp.html#" + details.link + "'>View the " + details.item.type + "</a>";
             } else { // Delete
                 options.subject = details.from.email + ' removed the ' + details.item.type + ' ' + details.item.name + '.';
             }
         }
 
-        smtpTransport.sendMail(options, function (err, res) {
+        smtpTransport.sendMail(options, function (err) {
             if (err) return callback(err);
 
             smtpTransport.close();
