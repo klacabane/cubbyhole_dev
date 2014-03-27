@@ -7,7 +7,8 @@ var planSchema = new mongoose.Schema({
 	duration : Number,
 	storage : Number,
 	sharedQuota : Number,
-	bandwidth : { type: mongoose.Schema.Types.ObjectId, ref: 'Bandwidth' }
+	bandwidth : { type: mongoose.Schema.Types.ObjectId, ref: 'Bandwidth' },
+    isMutable: {type: Boolean, default: true}
 });
 
 /*

@@ -18,7 +18,7 @@ var Cache = {
             .exec(function (err, bws) {
                 Cache._addBandwidths(bws);
 
-                Plan.find({}, 'bandwidth name price duration storage sharedQuota')
+                Plan.find({}, 'bandwidth name price duration storage sharedQuota isMutable')
                     .exec(function (err, plans) {
                         Cache._addPlans(plans);
                         if (callback) callback();

@@ -16,6 +16,9 @@
     "jwt-simple": "*",
     "nodemailer": "*",
     "easy-zip": "*",
-    "fs-extra": "*"
+    "adm-zip": "*",
+    "fs-extra": "*",
+    "throttle": "*",
+    "streamifier": "*"
   }
 }

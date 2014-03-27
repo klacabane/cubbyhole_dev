@@ -9,10 +9,13 @@ var Item = require('../models/Item'),
 	mw = require('../tools/middlewares'),
     easyZip = require('easy-zip').EasyZip,
     cache = require('../tools/cache'),
-    fs = require('fs-extra');
+    fs = require('fs-extra'),
+    Throttle = require('throttle'),
+    streamifier = require('streamifier'),
+    admZip = require('adm-zip');
 
 module.exports = function (app) {
-	/*
+	/**
 	 *	POST
 	 *  Create new Item
 	 */
@@ -44,12 +47,18 @@ module.exports = function (app) {
                     if (err || !user) return res.send(500);
 
                     var currentPlan = user.currentPlan;
-                    // Verify user's ability to upload
-                    if (Utils.bytesToMb(currentPlan.usage.bandwidth.upload + meta.size) > cache.getPlan(currentPlan.plan).bandwidth.upload)
+                    // Verify user's storage capacity
+                    if (Utils.bytesToMb(currentPlan.usage.storage + meta.size) > cache.getPlan(currentPlan.plan).storage)
                         return res.send(403);
 
-                    currentPlan.usage.bandwidth.upload += meta.size;
-                    currentPlan.save(function (err) {
+                    var query = {
+                        $inc: {
+                            'usage.storage': meta.size,
+                            'usage.bandwidth.upload': meta.size
+                        }};
+                    UserPlan.findByIdAndUpdate(currentPlan._id, query, function (err) {
+                        if (err) return res.send(500);
+
                         Item.findOne({name: name, type: type, parent: parent, owner: u}, function (err, item) {
                             if (err) return res.send(500);
                             if (item) name = Utils.rename(name);
@@ -68,7 +77,7 @@ module.exports = function (app) {
 		});
 	});
 
-    /*
+    /**
      *	POST
      *  Create copy of an item
      *  Needs ownership validation
@@ -134,7 +143,7 @@ module.exports = function (app) {
         });
     });
 
-	/*
+	/**
 	 * 	GET
 	 * 	Return single item
 	 */
@@ -183,7 +192,7 @@ module.exports = function (app) {
             });
 	});
 
-    /*
+    /**
      *	GET
      *  Return all items of authenticated user
      */
@@ -252,7 +261,7 @@ module.exports = function (app) {
         });
 	});
 
-    /*
+    /**
      *  GET
      *  Download
      *  Returns resource ( file or folder.zip ) buffer
@@ -262,44 +271,72 @@ module.exports = function (app) {
 			if (err) return res.send(500);
 			if (!item) return res.send(404);
 
-            function download() {
+            function download(dlLimit) {
                 item.getDirPath(function (err, dirPath) {
                     if (err) return res.send(500);
 
-                    if (item.type == 'file') {
-                        res.download(dirPath);
-                    } else {
-                        var zip = new easyZip();
+                    var limit = dlLimit || 10000,
+                        filename = (item.type === 'file') ? item.name : item.name + '.zip';
+                    res.setHeader('Content-Disposition', 'attachment; filename="' + filename + '"');
 
-                        zip.zipFolder(dirPath, function () {
-                            zip.writeToResponse(res, item.name);
+                    if (item.type === 'file') {
+                        fs.createReadStream(dirPath)
+                            .pipe(new Throttle(limit * 1024))
+                            .pipe(res);
+                    } else {
+                        item.getChildren(function (err, childs) {
+                            if (!childs.length) {
+                                // adm-zip doesn't support empty folders
+                                var zip = new easyZip();
+
+                                zip.zipFolder(dirPath, function () {
+                                    zip.writeToResponse(res, item.name);
+                                });
+                            } else {
+                                var zip = new admZip();
+                                zip.addLocalFolder(dirPath);
+
+                                zip.toBuffer(function (buffer) {
+                                    streamifier.createReadStream(buffer)
+                                        .pipe(new Throttle(limit * 1024))
+                                        .pipe(res);
+                                });
+                            }
                         });
                     }
                 });
             };
 
-            if (item.isPublic)
-                User.findOne({_id: item.owner})
-                    .populate('currentPlan')
-                    .exec(function (err, user) {
-                        var userPlan = cache.getPlan(user.currentPlan.plan);
+            // We don't throttle the bandwidth on public downloads
+            if (item.isPublic) {
+                // Assume user is a sharing's member,
+                // don't increment shared Quota
+                if (item.isShared && req.params.token)
+                    download();
+                else
+                    User.findOne({_id: item.owner})
+                        .populate('currentPlan')
+                        .exec(function (err, user) {
+                            var userPlan = cache.getPlan(user.currentPlan.plan);
 
-                        // Update item's owner daily transfer
-                        user.getTodayTransfer(function (err, dailyTransfer) {
-                            item.getSize(function (err, size) {
-                                if (err) return res.send(500);
-                                if (Utils.bytesToMb(dailyTransfer.dataShared + size) > userPlan.sharedQuota) return res.send(403);
-
-                                dailyTransfer.dataShared += size;
-                                dailyTransfer.save(function (err) {
+                            // Update item's owner daily transfer
+                            user.getTodayTransfer(function (err, dailyTransfer) {
+                                item.getSize(function (err, size) {
                                     if (err) return res.send(500);
+                                    if (Utils.bytesToMb(dailyTransfer.dataShared + size) > userPlan.sharedQuota) return res.send(403);
 
-                                    download();
+                                    dailyTransfer.dataShared += size;
+                                    dailyTransfer.save(function (err) {
+                                        if (err) return res.send(500);
+
+                                        download();
+                                    });
                                 });
                             });
                         });
-                    });
-            else
+            } else {
+                // Item is not public,
+                // proceed to user authorization
                 mw.checkAuth(req, res, function () {
                     // User is authenticated
                     // now check if he is authorized
@@ -315,41 +352,52 @@ module.exports = function (app) {
                                 item.getSize(function (err, size) {
                                     if (err) return res.send(500);
 
-                                    var currentPlan = user.currentPlan;
-                                    // Verify user's ability to download
-                                    if (Utils.bytesToMb(currentPlan.usage.bandwidth.download + size) > cache.getPlan(currentPlan.plan).bandwidth.download)
-                                        return res.send(403);
+                                    var currentPlan = user.currentPlan,
+                                        dlLimit = cache.getPlan(user.currentPlan.plan).bandwidth.download;
 
+                                    // Update current plan usage
                                     currentPlan.usage.bandwidth.download += size;
                                     currentPlan.save(function (err) {
                                         if (err) return res.send(500);
 
-                                        download();
+                                        download(dlLimit);
                                     });
                                 });
                             });
                         });
                 });
+            }
 		});
 	});
 
-	/* 
+	/**
 	 * 	DELETE
 	 * 	Removes resources and childrens if any
 	 */
 	app.delete('/item/:id', mw.checkAuth, mw.validateId, function (req, res) {
         var user = req.user;
+
 		Item.findOne({_id: req.params.id}, function (err, item) {
 			if (err) return res.send(500);
 			if (!item) return res.send(404);
 
+            function updateOwnerStorage(callback) {
+                item.getSize(function (err, size) {
+                    UserPlan.findOneAndUpdate(
+                        {user: item.owner, active: true},
+                        {$inc: {'usage.storage': -size}},
+                        callback);
+                });
+            }
+
             var isOwner = user === item.owner.toString();
 
             async.parallel([
+                // Item is not shared,
+                // make sure user is the owner
                 function (next) {
                     if (item.isShared) return next();
-                    // Item is not shared,
-                    // make sure user is the owner
+
                     if (!isOwner)
                         next(true, 403);
                     else
@@ -391,13 +439,17 @@ module.exports = function (app) {
                         function (err) {
                             if (err) return next(err);
 
-                            item.remove(next);
+                            // update user's storage and remove item
+                            updateOwnerStorage(function (err) {
+                                item.remove(next);
+                            });
                         });
                 },
+                // Item is shared,
+                // find the user relationship
                 function (next) {
                     if (!item.isShared) return next();
-                    // Item is shared,
-                    // find the user relationship
+
                     ItemShare.getItemShare(item, function (err, ishare) {
                         if (err || !ishare) return next(true);
 
@@ -405,6 +457,7 @@ module.exports = function (app) {
 
                         if (ishare.item.toString() === item._id.toString()) {
                             // Item is the root of the sharing
+                            // delete the sharing if owner else remove membership
                             if (isOwner) {
                                 ishare.remove(function (err) {
                                     if (err) return next(err);
@@ -418,8 +471,11 @@ module.exports = function (app) {
                             }
                         } else {
                             // Item is a child of a shared folder
+                            // delete if user has rw permissions
                             if (isOwner || (membership && membership.permissions === 1)) {
-                                item.remove(next);
+                                updateOwnerStorage(function (err) {
+                                    item.remove(next);
+                                });
                             } else {
                                 next(true, 403);
                             }
@@ -433,7 +489,7 @@ module.exports = function (app) {
 		});
 	});
 
-	/*
+	/**
 	 *	PUT
 	 *  Update resource name or parent
 	 */

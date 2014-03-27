@@ -7,11 +7,17 @@ var User = require('../models/User'),
     Utils = require('../tools/Utils');
 
 module.exports = function (app) {
-	/*
+	/**
 	 *  GET
+     *  Return user matching id param
 	 */
 	app.get('/user/:id', mw.checkAuth, mw.validateId, function (req, res) {
-		User.findOne({_id: req.params.id, isAdmin: {$exists: false}}, 'id email registrationDate currentPlan')
+        var query = {
+            _id: req.params.id,
+            isAdmin: {$exists: false},
+            deleted: false
+        };
+		User.findOne(query, 'id email registrationDate currentPlan')
             .populate('currentPlan')
             .exec(function (err, user) {
                 if (err) return res.send(500);
@@ -35,6 +41,10 @@ module.exports = function (app) {
 		    });
 	});
 
+    /**
+     *  GET
+     *  Return user matching email param
+     */
     app.get('/user/email/:email', mw.checkAuth, function (req, res) {
         User.findOne({email: req.params.email, isAdmin: {$exists: false}}, 'id email registrationDate currentPlan verified isAllowed')
             .populate('currentPlan')
@@ -53,6 +63,10 @@ module.exports = function (app) {
             });
     });
 
+    /**
+     *  GET
+     *  Return all users with pagination
+     */
     app.get('/user/:start/:limit', mw.checkAuth, mw.isAdmin, function (req, res) {
         var startIndex = parseInt(req.params.start) || 0,
             limit = parseInt(req.params.limit) || 0;
@@ -94,7 +108,10 @@ module.exports = function (app) {
         });
     });
 
-	// PUT
+    /**
+     *  PUT
+     *  Disable/Enable user account
+     */
     app.put('/user/:id', mw.checkAuth, mw.isAdmin, mw.validateId, function (req, res) {
         var isAllowed = req.body.isAllowed == 0 ? false : true;
 
@@ -112,5 +129,19 @@ module.exports = function (app) {
     });
 
 
-	// DELETE
+    /**
+     *  DELETE
+     */
+    app.delete('/user', mw.checkAuth, function (req, res) {
+        User.findOne({_id: req.user, deleted: false}, function (err, user) {
+            if (err || !user) return res.send(500);
+
+            user.deleted = true;
+            user.save(function (err) {
+                if (err) return res.send(500);
+
+                res.send(200);
+            });
+        });
+    });
 };

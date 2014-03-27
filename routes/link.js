@@ -5,9 +5,9 @@ var User = require('../models/User'),
     Utils = require('../tools/utils');
 
 module.exports = function (app) {
-    /*
+    /**
      *  POST
-     *  make the resource public
+     *  Make the resource public
      */
     app.post('/link/:id', mw.checkAuth, mw.validateId, function (req, res) {
         var itemId = req.params.id;
@@ -38,6 +38,10 @@ module.exports = function (app) {
         });
     });
 
+    /**
+     *  GET
+     *  Returns all link of authenticated user
+     */
     app.get('/link', mw.checkAuth, function (req, res) {
         var user = req.user;
         Item.find({$or: [{'link.recipients._id': user}, {'owner': user}], isPublic: true})
@@ -56,9 +60,9 @@ module.exports = function (app) {
             });
     });
 
-    /*
+    /**
      *  PUT
-     *
+     *  Invite more users to a link
      */
     app.put('/link/:id', mw.validateId, function (req, res) {
         var itemId = req.params.id,
@@ -125,8 +129,10 @@ module.exports = function (app) {
         });
     });
 
-    /*
+    /**
      *  DELETE
+     *  Make the item !isPublic if owner
+     *  or delete membership if participant
      */
     app.delete('/link/:id', mw.checkAuth, mw.validateId, function (req, res) {
         var itemId = req.params.id,

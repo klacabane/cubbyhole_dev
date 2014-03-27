@@ -30,7 +30,7 @@ var itemSchema = new mongoose.Schema({
 
 itemSchema.plugin(tree);
 
-/*
+/**
  *	Middlewares
  */
 itemSchema.pre('save', function (next) {
@@ -67,7 +67,7 @@ itemSchema.pre('remove', function (next) {
     });
 });
 
-/*
+/**
  *	Methods
  */
 itemSchema.methods.getDirPath = function (callback) {
@@ -228,7 +228,7 @@ itemSchema.methods.formatWithSize = function (callback) {
     });
 };
 
-/*
+/**
  *	Statics
  */
 itemSchema.statics.parentExists = function (id, cb) {

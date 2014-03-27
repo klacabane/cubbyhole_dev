@@ -12,7 +12,14 @@ module.exports = function (app) {
     require('../routes/link')(app);
     require('../routes/notification')(app);
 
-    // Signin
+    /**
+     *  POST
+     *  Signin
+     *  @errors
+     *  404: user not found
+     *  403: account is disabled
+     *  401: email is not verified
+     */
     app.post('/auth/signin', function (req, res) {
     	var email = req.body.email,
     		pw = req.body.pass,
@@ -43,31 +50,38 @@ module.exports = function (app) {
 		});
     });
 
-    // Register
+    /**
+     *  POST
+     *  Signup
+     *  @errors
+     *  422: email already taken
+     */
     app.post('/auth/signup', function (req, res) {
 		var email = req.body.email,
 			pw = req.body.pass;
 
 		if (!email || !pw) return res.send(400);
 
-		User.findOne({email: email.toLowerCase().trim()}, function (err, user) {
+		User.findOne({email: email.toLowerCase().trim(), deleted: false}, function (err, user) {
 			if (err) return res.send(500);
 			if (user) return res.send(422);
 			
-			new User({email: email, password: pw})
+			new User({email: email, password: pw, verified: true}) // school blocking proxy
 				.save(function (err, u) {
 					if (err) return res.send(500);
 					
 					Utils.sendEmail(u, function (err) {
-						if (err) return res.send(500);
+					});
 
-						res.send(201);
-					})
+                    res.send(201);
 				});
 		});
     });
 
-    // Verify token and render view
+    /**
+     *  GET
+     *  Confirm email address
+     */
     app.get('/auth/confirm/:token', function (req, res) {
     	var user = Utils.getTokenUser(req.params.token);
     	if (!user) return res.render('index', {locals: {error: 'Invalid token.'}});
@@ -78,6 +92,10 @@ module.exports = function (app) {
     	});
     });
 
+    /**
+     *  GET
+     *  Confirm item sharing
+     */
     app.get('/share/confirm/:id/:token', mw.validateId, function (req, res) {
         var user = Utils.getTokenUser(req.params.token);
         if (!user) return res.render('index', {locals: {error: 'Invalid token.'}});

@@ -3,7 +3,9 @@ var Plan = require('../models/Plan'),
     cache = require('../tools/cache');
 
 module.exports = function (app) {
-	// POST
+    /**
+     *  POST
+     */
     app.post('/plan', mw.checkAuth, mw.isAdmin, function (req, res) {
         var attrs = req.body.plan;
 
@@ -28,9 +30,10 @@ module.exports = function (app) {
 
     });
 
-	/*
-	 * GET
-	 */
+    /**
+     *  GET
+     *  Return single plan
+     */
 	app.get('/plan/:id', mw.checkAuth, mw.validateId, function (req, res) {
         var planId = req.params.id;
         var plan = cache.getPlan(planId);
@@ -42,19 +45,29 @@ module.exports = function (app) {
         });
 	});
 
+    /**
+     *  GET
+     *  Return all plans
+     */
     app.get('/plan', function (req, res) {
         res.send(200, {
             data: cache.store.Plans
         });
     });
 
+    /**
+     *  GET
+     *  Return all bandwidths
+     */
     app.get('/bandwidth', /*mw.checkAuth, mw.isAdmin,*/ function (req, res) {
         res.send(200, {
             data: cache.store.Bandwidths
         });
     });
 
-	// PUT
+    /**
+     *  PUT
+     */
 	app.put('/plan/:id', mw.checkAuth, mw.isAdmin, mw.validateId, function (req, res) {
         var update = req.body.plan;
         Plan.findOneAndUpdate({_id: req.params.id}, update, function (err, plan) {
@@ -71,7 +84,9 @@ module.exports = function (app) {
         });
 	});
 
-	// DELETE
+    /**
+     *  DELETE
+     */
     app.delete('/plan/:id', mw.checkAuth, mw.isAdmin, mw.validateId, function (req, res) {
         Plan.findOne({_id: req.params.id}, function (err, plan) {
             if (err) return res.send(500);

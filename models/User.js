@@ -15,6 +15,7 @@ var userSchema = new mongoose.Schema({
 	registrationDate: { type: Date, default: Date.now },
 	currentPlan: { type: mongoose.Schema.Types.ObjectId, ref: 'UserPlan' },
 	verified: {type: Boolean, default: false},
+    deleted: {type: Boolean, default: false},
     isAdmin: Boolean,
     isAllowed: {type: Boolean, default: true}
 });
@@ -72,17 +73,6 @@ userSchema.methods.getPlanUsage = function (callback) {
     var that = this;
 
     async.parallel({
-        storage: function (next) {
-            Item.findOne({owner: that._id, isRoot: true}, function (err, rootFolder) {
-                if (err) return next(err);
-
-                rootFolder.getSize(function (err, size) {
-                    if (err) return next(err);
-
-                    next(null, Utils.bytesToMb(size));
-                });
-            });
-        },
         share: function (next) {
             that.getTodayTransfer(function (err, dailyTransfer) {
                 if (err) return next(err);
@@ -90,19 +80,27 @@ userSchema.methods.getPlanUsage = function (callback) {
                 next(null, Utils.bytesToMb(dailyTransfer.dataShared));
             });
         },
-        bandwidth: function (next) {
+        usage: function (next) {
             UserPlan.findOne({_id: that.currentPlan}, function (err, currentPlan) {
                 if (err) return next(err);
 
-                var bwUsage = currentPlan.usage.bandwidth;
+                var planUsage = currentPlan.usage;
                 next(null, {
-                    download: Utils.bytesToMb(bwUsage.download),
-                    upload: Utils.bytesToMb(bwUsage.upload)
+                    storage: Utils.bytesToMb(planUsage.storage),
+                    bandwidth: {
+                        download: Utils.bytesToMb(planUsage.bandwidth.download),
+                        upload: Utils.bytesToMb(planUsage.bandwidth.upload)
+                    }
                 });
             });
         }
     },
-    callback);
+    function (err, results) {
+        if (err) return callback(err);
+
+        results.usage.share = results.share;
+        callback(null, results.usage);
+    });
 };
 
 userSchema.methods.getTodayTransfer = function (callback) {
@@ -125,7 +123,7 @@ userSchema.methods.getTodayTransfer = function (callback) {
 		
 		async.parallel([
 			function (cb) {
-				UserPlan.create({ user: that._id, plan: planId }, cb);
+				UserPlan.create({user: that._id, plan: planId}, cb);
 			},
 			function (cb) {
 				UserPlan.findByIdAndUpdate(that.currentPlan, { active: false }, cb);

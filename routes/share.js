@@ -9,9 +9,8 @@ var ItemShare = require('../models/ItemShare'),
 
 
 module.exports = function (app) {
-    /*
+    /**
      * POST
-     *
      */
     app.post('/share/:id', mw.checkAuth, mw.validateId, function (req, res) {
         var itemId = req.params.id || req.body.id,
@@ -165,14 +164,15 @@ module.exports = function (app) {
         });
     });
 
-    /*
+    /**
      * GET
      */
     app.get('/share/:id', mw.validateId, function (req, res) {
 
     });
 
-    /*
+    /**
+     *  GET
      *  Returns all Shares of authenticated user
      */
     app.get('/share', mw.checkAuth, function (req, res) {
@@ -223,8 +223,8 @@ module.exports = function (app) {
             });
     });
 
-    /*
-     * DELETE
+    /**
+     *  DELETE
      */
     app.delete('/share/:id/:member?', mw.checkAuth, mw.validateId, function (req, res) {
         var itemId = req.params.id,
@@ -263,8 +263,8 @@ module.exports = function (app) {
             });
     });
 
-    /*
-     * PUT
+    /**
+     *  PUT
      */
     app.put('/share/:id', mw.checkAuth, mw.validateId, function (req, res) {
         var itemId = req.params.id,
