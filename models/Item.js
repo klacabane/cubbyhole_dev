@@ -92,15 +92,17 @@ itemSchema.methods.getDirPath = function (callback) {
     });
 };
 
-itemSchema.methods.duplicate = function (parent, callback) {
-    var that = this;
-    this.model('Item').findOne({name: this.name, parent: parent, type: this.type, owner: this.owner}, function (err, existing) {
+itemSchema.methods.duplicate = function (args, callback) {
+    var that = this,
+        parent = args.parent,
+        owner = args.owner;
+    this.model('Item').findOne({name: this.name, parent: parent, type: this.type, owner: owner}, function (err, existing) {
         if (err) return callback(err);
         var name = (existing) ? Utils.rename(that.name) : that.name;
 
         new that.constructor({
             name: name,
-            owner: that.owner,
+            owner: owner,
             isCopy: true,
             type: that.type,
             parent: parent,
@@ -109,10 +111,9 @@ itemSchema.methods.duplicate = function (parent, callback) {
     });
 };
 
-itemSchema.methods.duplicateTree = function (parent, callback) {
+itemSchema.methods.duplicateTree = function (args, callback) {
     var that = this;
-
-    this.duplicate(parent, function (err, dupl) {
+    this.duplicate(args, function (err, dupl) {
         if (err) return callback(err);
         if (that.type === 'file') return callback(null, dupl);
 
@@ -124,7 +125,7 @@ itemSchema.methods.duplicateTree = function (parent, callback) {
             childrens.forEach(function (c) {
                 fn.push(function (cb) {
                     new that.constructor(c)
-                        .duplicateTree(dupl._id, cb);
+                        .duplicateTree({parent: dupl._id, owner: args.owner}, cb);
                 });
             });
 

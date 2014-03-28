@@ -103,7 +103,9 @@ module.exports = function (app) {
                                 share: item._id
                             };
 
-                            Utils.sendEmail(recip, details, cb);
+                            Utils.sendEmail(recip, details, function (err) {
+                            });
+                            cb();
                         }
                     ], callback);
                 },

@@ -91,6 +91,7 @@ module.exports = function (app) {
         Plan.findOne({_id: req.params.id}, function (err, plan) {
             if (err) return res.send(500);
             if (!plan) return res.send(404);
+            if (!plan.isMutable) return res.send(403);
 
             plan.remove(function (err) {
                 if (err) return res.send(500);

@@ -21,59 +21,105 @@ module.exports = function (app) {
 	 */
 	app.post('/item', mw.checkAuth, function (req, res) {
 		var type = req.body.type,
-			parent = req.body.parent,
-			u = req.user,
+			parentId = req.body.parent,
+			userId = req.user,
 			meta = {},
 			name;
 
-		if (type != 'folder' && type != 'file' || !parent) return res.send(400);
+		if (type != 'folder' && type != 'file' || !parentId) return res.send(400);
 
-		Item.findOne({_id: parent}, function (err, par) {
+		Item.findOne({_id: parentId}, function (err, parent) {
 			if (err) return res.send(500);
-			if (!par) return res.send(422);
+			if (!parent) return res.send(422);
 
-			if (type == 'folder') {
-				name = req.body.name;
-                meta = {size: 0};
-			} else {
-				var f = req.files[Object.keys(req.files)[0]];
-				name = f.name;
-				meta = Utils.getFileMeta(f);
-			}
+            // Check if user has Write permissions on parent
+            User.hasPermissions({item: parent, user: userId, permissions: 1}, function (err, ok) {
+                if (err) return res.send(500);
+                if (!ok) return res.send(403);
 
-            User.findOne({_id: req.user})
-                .populate('currentPlan')
-                .exec(function (err, user) {
-                    if (err || !user) return res.send(500);
+                if (type == 'folder') {
+                    name = req.body.name;
+                    meta = {size: 0};
+                } else {
+                    var f = req.files[Object.keys(req.files)[0]];
+                    name = f.name;
+                    meta = Utils.getFileMeta(f);
+                }
 
-                    var currentPlan = user.currentPlan;
-                    // Verify user's storage capacity
-                    if (Utils.bytesToMb(currentPlan.usage.storage + meta.size) > cache.getPlan(currentPlan.plan).storage)
-                        return res.send(403);
+                async.waterfall([
+                    function (next) {
+                        // Check if user is the owner,
+                        // if so we'll only need him for the next func,
+                        // else we'll need owner of the parent too
+                        User.findOne({_id: userId})
+                            .populate('currentPlan')
+                            .exec(function (err, user) {
+                                if (err || !user) return next(true);
 
-                    var query = {
-                        $inc: {
-                            'usage.storage': meta.size,
-                            'usage.bandwidth.upload': meta.size
-                        }};
-                    UserPlan.findByIdAndUpdate(currentPlan._id, query, function (err) {
-                        if (err) return res.send(500);
+                                if (user._id.toString() === parent.owner.toString())
+                                    next(null, user, null);
+                                else
+                                    User.findOne({_id: parent.owner})
+                                        .populate('currentPlan')
+                                        .exec(function (err, parentOwner) {
+                                            next(err, user, parentOwner);
+                                        });
+                            });
+                    },
+                    function (user, parentOwner, next) {
+                        // Update currentPlan(s) storage and upload
+                        // based on user relationship with parent
+                        var owner = parentOwner || user;
 
-                        Item.findOne({name: name, type: type, parent: parent, owner: u}, function (err, item) {
+                        var ownerPlan = owner.currentPlan;
+                        // Verify owner's storage capacity
+                        if (Utils.bytesToMb(ownerPlan.usage.storage + meta.size) > cache.getPlan(ownerPlan.plan).storage)
+                            return res.send(true, 403);
+
+                        if (owner._id.toString() === user._id.toString()) {
+                            // User uploads an item in one of his folders
+                            var query = {
+                                $inc: {
+                                    'usage.storage': meta.size,
+                                    'usage.bandwidth.upload': meta.size
+                                }};
+                            UserPlan.findByIdAndUpdate(ownerPlan._id, query, function (err) {
+                                next(err, user);
+                            });
+                        } else {
+                            // User uploads an item in a shared folder
+                            // update parentOwner's storage and user's upload
+                            UserPlan.findByIdAndUpdate(parentOwner.currentPlan._id, {$inc: {'usage.storage': meta.size}},
+                                function (err) {
+                                    if (err) return next(err);
+
+                                    UserPlan.findByIdAndUpdate(user.currentPlan._id, {$inc: {'usage.bandwidth.upload': meta.size}},
+                                        function (err) {
+                                            next(err, parentOwner);
+                                        });
+                                });
+                        }
+
+                    },
+                    function (owner, next) {
+                        // Rename item if needed
+                        // and create it
+                        Item.findOne({name: name, type: type, parent: parent._id, owner: owner._id}, function (err, item) {
                             if (err) return res.send(500);
                             if (item) name = Utils.rename(name);
 
-                            new Item({name: name, type: type, owner: u, parent: parent, meta: meta, isShared: par.isShared})
-                                .save(function (err, newItem) {
-                                if (err) return res.send(500);
-
-                                res.send(201, {
-                                    data: newItem
-                                });
-                            });
+                            new Item({name: name, type: type, owner: owner._id, parent: parent._id, meta: meta, isShared: parent.isShared})
+                                .save(next);
                         });
+                    }
+                ], function (err, newItem) {
+                    if (err) return res.send(500);
+
+                    res.send(200, {
+                        data: newItem
                     });
                 });
+            });
 		});
 	});
 
@@ -83,23 +129,22 @@ module.exports = function (app) {
      *  Needs ownership validation
      */
     app.post('/item/:id', mw.checkAuth, mw.validateId, function (req, res) {
-        var parent = req.body.parent,
+        var parentId = req.body.parent,
             itemId = req.params.id;
 
         async.waterfall([
-            function (cb) {
-                Item.parentExists(parent, cb);
+            function (next) {
+                Item.findOne({_id: parentId}, next);
             },
-            function (exists, cb) {
-                if (!exists) return cb(true, 422);
+            function (parent, next) {
+                if (!parent) return next(true, 422);
 
                 Item.findOne({_id: itemId}, function (err, original) {
-                    if (err) return cb(err);
-                    if (!original) return cb(true, 404);
+                    if (err) return next(err);
+                    if (!original) return next(true, 404);
 
-                    original.duplicateTree(parent, function (err, dupl) {
-                        if (err) return cb(err);
-                        cb(null, original, dupl);
+                    original.duplicateTree({parent: parent._id, owner: parent.owner}, function (err, dupl) {
+                        next(err, original, dupl);
                     });
                 });
             },
@@ -114,7 +159,7 @@ module.exports = function (app) {
             }
         ],
         function (err, results) {
-            if (err) return res.send(originPath || 500);
+            if (err) return res.send(results || 500);
 
             results.dupl
                 .getChildrenTree(function (err, childrens) {
@@ -135,8 +180,16 @@ module.exports = function (app) {
 
                     fs.copy(results.originPath, results.duplPath, function (err) {
                         if (err) return res.send(500);
-                        res.send(201, {
-                            data: dupTree
+
+                        results.dupl.getSize(function (err, size) {
+                            UserPlan.findOneAndUpdate({user: results.dupl.owner, active: true}, {$inc: {'usage.storage': size}},
+                                function (err) {
+                                    if (err) return res.send(500);
+
+                                    res.send(201, {
+                                        data: dupTree
+                                    });
+                                });
                         });
                     });
                 });
@@ -499,7 +552,10 @@ module.exports = function (app) {
                             if (isOwner) {
                                 ishare.remove(function (err) {
                                     if (err) return next(err);
-                                    item.remove(next);
+
+                                    updateOwnerStorage(function (err) {
+                                        item.remove(next);
+                                    });
                                 });
                             } else if (membership) {
                                 ishare.removeMember(user);

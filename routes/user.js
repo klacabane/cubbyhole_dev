@@ -148,7 +148,7 @@ module.exports = function (app) {
         });
     });
 
-    app.delete('/user/:id', mw.validateId, mw.isAdmin, function (req, res) {
+    app.delete('/user/:id', mw.checkAuth, mw.isAdmin, mw.validateId, function (req, res) {
         deleteUser(req.params.id, function (err) {
             if (err) return res.send(500);
             res.send(200);
