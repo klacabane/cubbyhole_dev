@@ -46,7 +46,12 @@ module.exports = function (app) {
      *  Return user matching email param
      */
     app.get('/user/email/:email', mw.checkAuth, function (req, res) {
-        User.findOne({email: req.params.email, isAdmin: {$exists: false}}, 'id email registrationDate currentPlan verified isAllowed')
+        var query = {
+            _id: req.params.id,
+            isAdmin: {$exists: false},
+            deleted: false
+        };
+        User.findOne(query, 'id email registrationDate currentPlan verified isAllowed')
             .populate('currentPlan')
             .exec(function (err, user) {
                 if (err) return res.send(500);
@@ -56,9 +61,16 @@ module.exports = function (app) {
                     planId = user.currentPlan.plan;
 
                 obj.currentPlan.plan = cache.getPlan(planId);
+                user.getPlanUsage(function (err, usage) {
+                    if (err) return res.send(500);
 
-                res.send(200, {
-                    data: obj
+                    obj.currentPlan.usage.storage = usage.storage;
+                    obj.currentPlan.usage.share = usage.share;
+                    obj.currentPlan.usage.bandwidth = usage.bandwidth;
+
+                    res.send(200, {
+                        data: obj
+                    });
                 });
             });
     });
@@ -73,7 +85,7 @@ module.exports = function (app) {
 
         if (limit > 0) ++limit;
 
-        var query = {isAdmin: {$exists: false}};
+        var query = {isAdmin: {$exists: false}, deleted: false};
 
         User.count(query, function (err, rowsCount) {
             User.find(query)

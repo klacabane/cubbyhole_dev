@@ -28,7 +28,7 @@ module.exports = function (app) {
 
     	if (!email || !pw) return res.send(400);
 
-    	User.findOne({email: email.toLowerCase().trim()}, function (err, user) {
+    	User.findOne({email: email.toLowerCase().trim(), deleted: false}, function (err, user) {
 			if (err) return res.send(500);
 			if (!user) return res.send(404);
             if (!user.isAllowed) return res.send(403);

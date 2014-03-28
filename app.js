@@ -24,6 +24,8 @@ app.set('view options', {
 });
 app.use(express.static(__dirname + '/public'));
 app.use(express.bodyParser({limit: '1000mb'}));
+app.use(express.cookieParser('Thierry Pastor'));
+app.use(express.session());
 app.use(mw.setHeaders);
 app.use(app.router);
 app.use(express.favicon());
