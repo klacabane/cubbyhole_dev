@@ -92,7 +92,7 @@ module.exports = function (app) {
                                         totalUpload += file.size;
                                         Item.findOne({name: itemArgs.name, type: 'file', parent: parent._id, owner: parent.owner}, function (err, item) {
                                             if (err) return callback(err);
-                                            if (item) itemArgs.name = Utils.rename(name);
+                                            if (item) itemArgs.name = Utils.rename(itemArgs.name);
 
                                             itemArgs.meta = Utils.getFileMeta(file);
                                             items.push(new Item(itemArgs));

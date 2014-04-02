@@ -18,8 +18,8 @@
     "easy-zip": "*",
     "adm-zip": "*",
     "fs-extra": "*",
-    "throttle": "*",
-    "streamifier": "*",
-    "multiparty": "*"
+    "throttle": "1.0.3",
+    "streamifier": "0.1.0",
+    "multiparty": "3.2.4"
   }
 }
