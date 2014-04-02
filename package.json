@@ -20,6 +20,7 @@
     "fs-extra": "*",
     "throttle": "1.0.3",
     "streamifier": "0.1.0",
-    "multiparty": "3.2.4"
+    "multiparty": "3.2.4",
+    "paypal-rest-sdk": "0.6.4"
   }
 }
