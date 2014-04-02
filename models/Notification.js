@@ -17,6 +17,13 @@ var notificationSchema = new mongoose.Schema({
     message: String
 });
 
+/**
+ * Methods
+ */
+
+/**
+ * createMessage
+ */
 notificationSchema.methods.createMessage = function () {
     switch (this.type) {
         case 'S':

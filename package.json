@@ -19,6 +19,7 @@
     "adm-zip": "*",
     "fs-extra": "*",
     "throttle": "*",
-    "streamifier": "*"
+    "streamifier": "*",
+    "multiparty": "*"
   }
 }

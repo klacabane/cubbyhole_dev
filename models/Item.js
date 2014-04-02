@@ -33,6 +33,8 @@ itemSchema.plugin(tree);
 /**
  *	Middlewares
  */
+
+/** save */
 itemSchema.pre('save', function (next) {
 	var that = this;
 
@@ -60,6 +62,7 @@ itemSchema.pre('save', function (next) {
     });
 });
 
+/** remove */
 itemSchema.pre('remove', function (next) {
     this.getDirPath(function (err, path) {
         if (err) return next(err);
@@ -69,6 +72,12 @@ itemSchema.pre('remove', function (next) {
 
 /**
  *	Methods
+ */
+
+/**
+ * getDirPath
+ * @param callback
+ * @returns dirPath @string
  */
 itemSchema.methods.getDirPath = function (callback) {
     var that = this,
@@ -92,6 +101,12 @@ itemSchema.methods.getDirPath = function (callback) {
     });
 };
 
+/**
+ * duplicate
+ * @param args  @object {parent: id, owner: id}
+ * @param callback
+ * @returns duplicatedItem @Item
+ */
 itemSchema.methods.duplicate = function (args, callback) {
     var that = this,
         parent = args.parent,
@@ -111,6 +126,12 @@ itemSchema.methods.duplicate = function (args, callback) {
     });
 };
 
+/**
+ * duplicateTree
+ * @param args  @object {parent: id, owner: id}
+ * @param callback
+ * @returns duplicated Item with tree @Item
+ */
 itemSchema.methods.duplicateTree = function (args, callback) {
     var that = this;
     this.duplicate(args, function (err, dupl) {
@@ -138,6 +159,13 @@ itemSchema.methods.duplicateTree = function (args, callback) {
     });
 };
 
+/**
+ * setShared
+ * Update isShared property to the item and his childs
+ * @param value @bool
+ * @param callback
+ * @returns updatedItem @Item
+ */
 itemSchema.methods.setShared = function (value, callback) {
     var that = this;
 
@@ -160,6 +188,10 @@ itemSchema.methods.setShared = function (value, callback) {
     });
 };
 
+/**
+ * removeLinkRecipient
+ * @param id @id user to remove
+ */
 itemSchema.methods.removeLinkRecipient = function (id) {
     for (var i = 0, length = this.link.recipients.length; i < length; i++) {
         if (this.link.recipients[i]._id == id) {
@@ -169,12 +201,19 @@ itemSchema.methods.removeLinkRecipient = function (id) {
     }
 };
 
+/**
+ * getSize
+ * @param callback
+ * @returns size @int
+ */
 itemSchema.methods.getSize = function (callback) {
     var that = this;
     this.getDirPath(function (err, dirPath) {
         if (err) return callback(err);
 
         fs.stat(dirPath, function (err, stats) {
+            if (err) return callback(err);
+
             var total = stats.isDirectory() ? 0 : stats.size;
             that.getChildren(function (err, childrens) {
                 if (err) return callback(err);

@@ -23,7 +23,8 @@ app.set('view options', {
     layout: false
 });
 app.use(express.static(__dirname + '/public'));
-app.use(express.bodyParser({limit: '1000mb'}));
+app.use(express.json());
+app.use(express.urlencoded());
 app.use(express.cookieParser('Thierry Pastor'));
 app.use(express.session());
 app.use(mw.setHeaders);
@@ -43,8 +44,7 @@ if ('development' == app.get('env')) {
 mongoose.connect(cfg.db.address, function (err) {
 	if (err) throw err;
 
-    // Uncomment to populate db with new Plans/Bws
-
+    /** Uncomment to populate db with new Plans & Bws */
     /*
 	Utils.insertPlanAndBw(function (err) {
 		if (err) throw err;
@@ -66,7 +66,7 @@ fs.exists(cfg.storage.dir, function (exists) {
 });
 
 http.createServer(app).listen(app.get('port'), function(){
-  console.log('Express server listening on port ' + app.get('port'));
+  console.log('Cubbyhole API listening on port ' + app.get('port'));
 });
 
 /**

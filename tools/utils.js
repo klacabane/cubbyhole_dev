@@ -41,7 +41,7 @@ var Utils = {
 	 *  File
 	 */
 	getFileMeta: function (file) {
-        var ext = file.name.split('.').pop();
+        var ext = file.originalFilename.split('.').pop();
         var type = this._extensions.find(ext);
 
 		return {

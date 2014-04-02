@@ -1,8 +1,14 @@
 var Plan = require('../models/Plan'),
+    User = require('../models/User'),
 	mw = require('../tools/middlewares'),
-    cache = require('../tools/cache');
+    cache = require('../tools/cache'),
+    cfg = require('../config'),
+    paypal = require('paypal-rest-sdk');
 
 module.exports = function (app) {
+    /** init paypal with id&secret */
+    paypal.configure(cfg.paypal);
+
     /**
      *  POST
      */
@@ -25,9 +31,68 @@ module.exports = function (app) {
 
     });
 
-    // Process PayPal payment
-    app.post('/plan/subscribe', mw.checkAuth, mw.validateId, function (req, res) {
+    /**
+     * Paypal
+     * Payment process
+     */
+    app.get('/plan/:id/subscribe/:token', mw.checkAuth, mw.validateId, function (req, res) {
+        var plan = cache.getPlan(req.params.id);
 
+        if (!plan) return res.send(404);
+
+        var payment = {
+            "intent": "sale",
+            "payer": {
+                "payment_method": "paypal"
+            },
+            "redirect_urls": {
+                "return_url": cfg.api.address + "/payment/execute",
+                "cancel_url": cfg.api.address + "/payment/cancel"
+            },
+            "transactions": [{
+                "amount": {
+                    "total": plan.price,
+                    "currency": "EUR"
+                },
+                "description": "Cubbyhole " + plan.name + " Plan subscription."
+            }]
+        };
+
+        paypal.payment.create(payment, function (err, payment) {
+            if (err) return res.send(500);
+
+            req.session.paymentId = payment.id;
+            req.session.paymentArgs = {user: req.user, plan: plan};
+            var redirectUrl;
+            for(var i = 0, length = payment.links.length; i < length; i++) {
+                var link = payment.links[i];
+                if (link.method === 'REDIRECT') {
+                    redirectUrl = link.href;
+                }
+            }
+            res.redirect(redirectUrl);
+        });
+    });
+
+    /** Payment was successful */
+    app.get('/payment/execute', function (req, res) {
+        var userId = req.session.paymentArgs.user,
+            plan = req.session.paymentArgs.plan;
+
+        User.findOne({_id: userId}, function (err, user) {
+            if (err) return res.send(500);
+
+            user.updatePlan(plan._id, function (err) {
+                if (err) return res.send(500);
+
+                res.redirect(cfg.webclient.address + "/webapp.html#/user?paid=" + plan.name);
+            });
+        });
+    });
+
+    /** Payment was cancelled */
+    app.get('/payment/cancel', function (req, res) {
+        res.redirect(cfg.webclient.address + "/webapp.html#/user");
     });
 
     /**

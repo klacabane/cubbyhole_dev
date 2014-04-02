@@ -2,53 +2,39 @@ var Item = require('../models/Item'),
     ItemShare = require('../models/ItemShare'),
     User = require('../models/User'),
     Notification = require('../models/Notification'),
-    DailyTransfer = require('../models/UserDailyTransfer'),
     UserPlan = require('../models/UserPlan'),
 	async = require('async'),
 	Utils = require('../tools/utils'),
 	mw = require('../tools/middlewares'),
     easyZip = require('easy-zip').EasyZip,
+    admZip = require('adm-zip'),
     cache = require('../tools/cache'),
     fs = require('fs-extra'),
     Throttle = require('throttle'),
-    streamifier = require('streamifier'),
-    admZip = require('adm-zip');
+    streamifier = require('streamifier');
 
 module.exports = function (app) {
 	/**
 	 *	POST
-	 *  Create new Item
+	 *  Create new Item(s)
 	 */
-	app.post('/item', mw.checkAuth, function (req, res) {
-		var type = req.body.type,
-			parentId = req.body.parent,
-			userId = req.user,
-			meta = {},
-			name;
+    app.post('/item', mw.checkAuth, mw.parseMultipart, function (req, res) {
+        var parentId = req.body.parent || req.parentId,
+            type = req.body.type || 'file',
+            userId = req.user,
+            items = [];
 
-		if (type != 'folder' && type != 'file' || !parentId) return res.send(400);
+        Item.findOne({_id: parentId}, function (err, parent) {
+            if (err) return res.send(500);
+            if (!parent) return res.send(422);
 
-		Item.findOne({_id: parentId}, function (err, parent) {
-			if (err) return res.send(500);
-			if (!parent) return res.send(422);
-
-            // Check if user has Write permissions on parent
             User.hasPermissions({item: parent, user: userId, permissions: 1}, function (err, ok) {
                 if (err) return res.send(500);
                 if (!ok) return res.send(403);
 
-                if (type == 'folder') {
-                    name = req.body.name;
-                    meta = {size: 0};
-                } else {
-                    var f = req.files[Object.keys(req.files)[0]];
-                    name = f.name;
-                    meta = Utils.getFileMeta(f);
-                }
-
                 async.waterfall([
                     function (next) {
-                        // Check if user is the owner,
+                        // Check if user is the parent's owner,
                         // if so we'll only need him for the next func,
                         // else we'll need owner of the parent too
                         User.findOne({_id: userId})
@@ -67,61 +53,88 @@ module.exports = function (app) {
                             });
                     },
                     function (user, parentOwner, next) {
-                        // Update currentPlan(s) storage and upload
-                        // based on user relationship with parent
-                        var owner = parentOwner || user;
+                        var itemArgs = {
+                            name: '',
+                            type: type,
+                            parent: parent._id,
+                            owner: parent.owner,
+                            meta: {},
+                            isShared: parent.isShared
+                        };
 
-                        var ownerPlan = owner.currentPlan;
-                        // Verify owner's storage capacity
-                        if (Utils.bytesToMb(ownerPlan.usage.storage + meta.size) > cache.getPlan(ownerPlan.plan).storage)
-                            return res.send(true, 403);
+                        // Process folder creation
+                        if (type === 'folder') {
+                            itemArgs.name = req.body.name;
+                            Item.findOne({name: itemArgs.name, type: 'folder', parent: parent._id, owner: parent.owner}, function (err, item) {
+                                if (err) return next(err);
+                                if (item) itemArgs.name = Utils.rename(itemArgs.name);
 
-                        if (owner._id.toString() === user._id.toString()) {
-                            // User uploads an item in one of his folders
-                            var query = {
-                                $inc: {
-                                    'usage.storage': meta.size,
-                                    'usage.bandwidth.upload': meta.size
-                                }};
-                            UserPlan.findByIdAndUpdate(ownerPlan._id, query, function (err) {
-                                next(err, user);
+                                itemArgs.meta = {size:0};
+                                items.push(new Item(itemArgs));
+
+                                next();
                             });
                         } else {
-                            // User uploads an item in a shared folder
-                            // update parentOwner's storage and user's upload
-                            UserPlan.findByIdAndUpdate(parentOwner.currentPlan._id, {$inc: {'usage.storage': meta.size}},
+                            // Verify owner's storage capacity for each file and
+                            // update user's currentPlan upload
+                            var owner = parentOwner || user;
+                            var ownerPlan = owner.currentPlan,
+                                totalUpload = 0;
+
+                            async.eachSeries(
+                                req.files,
+                                function (file, callback) {
+                                    itemArgs.name = file.originalFilename;
+                                    owner.getStorageUsage(function (err, usedStorage) {
+                                        if (Utils.bytesToMb(usedStorage + (totalUpload + file.size)) > cache.getPlan(ownerPlan.plan).storage)
+                                            return callback();
+
+                                        totalUpload += file.size;
+                                        Item.findOne({name: itemArgs.name, type: 'file', parent: parent._id, owner: parent.owner}, function (err, item) {
+                                            if (err) return callback(err);
+                                            if (item) itemArgs.name = Utils.rename(name);
+
+                                            itemArgs.meta = Utils.getFileMeta(file);
+                                            items.push(new Item(itemArgs));
+
+                                            callback();
+                                        });
+                                    });
+                                },
                                 function (err) {
                                     if (err) return next(err);
 
-                                    UserPlan.findByIdAndUpdate(user.currentPlan._id, {$inc: {'usage.bandwidth.upload': meta.size}},
-                                        function (err) {
-                                            next(err, parentOwner);
-                                        });
+                                    var query = {
+                                        $inc: {
+                                            'usage.bandwidth.upload': totalUpload
+                                        }};
+                                    UserPlan.findByIdAndUpdate(user.currentPlan._id, query, next);
                                 });
                         }
+                    }],
+                    function (err) {
+                        if (err) return res.send(500);
+                        if (!items.length) return res.send(403);
 
-                    },
-                    function (owner, next) {
-                        // Rename item if needed
-                        // and create it
-                        Item.findOne({name: name, type: type, parent: parent._id, owner: owner._id}, function (err, item) {
-                            if (err) return res.send(500);
-                            if (item) name = Utils.rename(name);
-
-                            new Item({name: name, type: type, owner: owner._id, parent: parent._id, meta: meta, isShared: parent.isShared})
-                                .save(next);
+                        var itemsFn = [];
+                        items.forEach(function (it) {
+                            itemsFn.push(function (callback) {
+                                it.save(function (err, newItem) {
+                                    callback(err, newItem);
+                                });
+                            });
                         });
-                    }
-                ], function (err, newItem) {
-                    if (err) return res.send(500);
 
-                    res.send(200, {
-                        data: newItem
+                        async.parallel(itemsFn, function (err, newItems) {
+                            if (err) return res.send(500);
+                            res.send(200, {
+                                data: newItems
+                            });
+                        });
                     });
-                });
             });
-		});
-	});
+        });
+    });
 
     /**
      *	POST
@@ -181,15 +194,8 @@ module.exports = function (app) {
                     fs.copy(results.originPath, results.duplPath, function (err) {
                         if (err) return res.send(500);
 
-                        results.dupl.getSize(function (err, size) {
-                            UserPlan.findOneAndUpdate({user: results.dupl.owner, active: true}, {$inc: {'usage.storage': size}},
-                                function (err) {
-                                    if (err) return res.send(500);
-
-                                    res.send(201, {
-                                        data: dupTree
-                                    });
-                                });
+                        res.send(201, {
+                            data: dupTree
                         });
                     });
                 });
@@ -472,15 +478,6 @@ module.exports = function (app) {
 			if (err) return res.send(500);
 			if (!item) return res.send(404);
 
-            function updateOwnerStorage(callback) {
-                item.getSize(function (err, size) {
-                    UserPlan.findOneAndUpdate(
-                        {user: item.owner, active: true},
-                        {$inc: {'usage.storage': -size}},
-                        callback);
-                });
-            }
-
             var isOwner = user === item.owner.toString();
 
             async.parallel([
@@ -530,10 +527,7 @@ module.exports = function (app) {
                         function (err) {
                             if (err) return next(err);
 
-                            // update user's storage and remove item
-                            updateOwnerStorage(function (err) {
-                                item.remove(next);
-                            });
+                            item.remove(next);
                         });
                 },
                 // Item is shared,
@@ -552,10 +546,7 @@ module.exports = function (app) {
                             if (isOwner) {
                                 ishare.remove(function (err) {
                                     if (err) return next(err);
-
-                                    updateOwnerStorage(function (err) {
-                                        item.remove(next);
-                                    });
+                                    item.remove(next);
                                 });
                             } else if (membership) {
                                 ishare.removeMember(user);
@@ -567,9 +558,7 @@ module.exports = function (app) {
                             // Item is a child of a shared folder
                             // delete if user has rw permissions
                             if (isOwner || (membership && membership.permissions === 1)) {
-                                updateOwnerStorage(function (err) {
-                                    item.remove(next);
-                                });
+                                item.remove(next);
                             } else {
                                 next(true, 403);
                             }

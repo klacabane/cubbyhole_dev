@@ -1,5 +1,6 @@
 var Utils = require('../tools/utils'),
-    User = require('../models/User');
+    User = require('../models/User'),
+    multiparty = require('multiparty');
 
 module.exports = {
 	checkAuth: function (req, res, next) {
@@ -31,5 +32,22 @@ module.exports = {
 
             next();
         });
+    },
+    parseMultipart: function (req, res, next) {
+        if (req.get('content-type').indexOf('multipart/form-data') > -1) {
+            new multiparty.Form()
+                .parse(req, function (err, fields, files) {
+                    if (err) return next(err);
+
+                    req.parentId = fields.parent[0];
+                    req.files = [];
+                    for (var fileName in files) {
+                        req.files.push(files[fileName][0]);
+                    }
+                    next();
+                });
+        } else {
+            next();
+        }
     }
 }

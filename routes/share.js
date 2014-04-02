@@ -277,13 +277,14 @@ module.exports = function (app) {
             if (err) return res.send(500);
             if (!ishare) return res.send(404);
 
+            var membership = ishare.getMembership(member ? member : req.user);
+            if (!membership) return res.send(403);
+
             // Sharing Confirmation
             if (!member)
-                ishare.getMembership(req.user)
-                    .accepted = true;
+                membership.accepted = true;
             else    // Update member permissions
-                ishare.getMembership(member)
-                    .permissions = permissions;
+                membership.permissions = permissions;
 
             ishare.save(function (err) {
                 if (err) return res.send(500);

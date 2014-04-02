@@ -24,7 +24,10 @@ var itemShareSchema = new mongoose.Schema({
     item: {type: mongoose.Schema.Types.ObjectId, ref: 'Item'}
 });
 
-
+/**
+ * Middlewares
+ */
+/** remove */
 itemShareSchema.pre('remove', function (next) {
     Item.findOne({_id: this.item}, function (err, item) {
         if (err) return next(err);
@@ -33,7 +36,14 @@ itemShareSchema.pre('remove', function (next) {
     });
 });
 
+/**
+ * Methods
+ */
 
+/**
+ * format
+ * @returns {Object}
+ */
 itemShareSchema.methods.format = function () {
     var obj = this.toObject();
     obj._id = obj.item._id;
@@ -46,6 +56,12 @@ itemShareSchema.methods.format = function () {
     return obj;
 };
 
+/**
+ * formatWithPath
+ * @param user
+ * @param callback
+ * @returns {Object}
+ */
 itemShareSchema.methods.formatWithPath = function (user, callback) {
     var obj = this.toObject();
 
@@ -85,6 +101,10 @@ itemShareSchema.methods.formatWithPath = function (user, callback) {
     }
 };
 
+/**
+ * removeMember
+ * @param id @id Member to remove
+ */
 itemShareSchema.methods.removeMember = function (id) {
     for (var i = 0, length = this.members.length; i < length; i++) {
         if (this.members[i]._id == id) {
@@ -94,11 +114,20 @@ itemShareSchema.methods.removeMember = function (id) {
     }
 };
 
-
+/**
+ * isMember
+ * @param id @id User to check
+ * @returns @bool
+ */
 itemShareSchema.methods.isMember = function (id) {
     return Utils.isMember(id, this.members);
 };
 
+/**
+ * getMembership
+ * @param id @id User to check
+ * @returns User's membership @{Object|null}
+ */
 itemShareSchema.methods.getMembership = function (id) {
     var members = this.members,
         userId = (typeof id === 'string') ? id : id.toString(),
@@ -112,6 +141,12 @@ itemShareSchema.methods.getMembership = function (id) {
     return membership;
 };
 
+/**
+ * getItemShare
+ * @param item
+ * @param callback
+ * @returns @ItemShare
+ */
 itemShareSchema.statics.getItemShare = function (item, callback) {
     var that = this;
 

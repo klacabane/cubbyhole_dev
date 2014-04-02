@@ -88,7 +88,7 @@ module.exports = function (app) {
     	if (!user) return res.render('index', {locals: {error: 'Invalid token.'}});
 
     	User.findOneAndUpdate({_id: user}, {$set: {verified: true}}, function (err, user) {
-    		if (err) return res.render('index', {locals: {error: err}});
+    		if (err) return res.render('index', {locals: {error: 'Something went wrong.'}});
     		res.redirect(cfg.webclient.address + '/index.html?email=' + user.email);
     	});
     });
@@ -104,12 +104,14 @@ module.exports = function (app) {
         ItemShare.findOne({item: req.params.id})
             .populate('item')
             .exec(function (err, ishare) {
-                if (err) return res.render('index', {locals: {error: err}});
+                if (err) return res.render('index', {locals: {error: 'Something went wrong.'}});
 
-                ishare.getMembership(user)
-                    .accepted = true;
+                var membership = ishare.getMembership(user);
+                if (!membership) return res.render('index', {locals: {error: "You're not part of this sharing anymore."}});
+
+                membership.accepted = true;
                 ishare.save(function (err) {
-                    if (err) return res.render('index', {locals: {error: err}});
+                    if (err) return res.render('index', {locals: {error: 'Something went wrong.'}});
 
                     res.redirect(cfg.webclient.address + '/webapp.html#/files?path=My Cubbyhole,' + ishare.item.name);
                 });

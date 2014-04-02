@@ -30,10 +30,7 @@ module.exports = function (app) {
                 user.getPlanUsage(function (err, usage) {
                     if (err) return res.send(500);
 
-                    obj.currentPlan.usage.storage = usage.storage;
-                    obj.currentPlan.usage.share = usage.share;
-                    obj.currentPlan.usage.bandwidth = usage.bandwidth;
-
+                    obj.currentPlan.usage = usage;
                     res.send(200, {
                         data: obj
                     });
@@ -64,10 +61,7 @@ module.exports = function (app) {
                 user.getPlanUsage(function (err, usage) {
                     if (err) return res.send(500);
 
-                    obj.currentPlan.usage.storage = usage.storage;
-                    obj.currentPlan.usage.share = usage.share;
-                    obj.currentPlan.usage.bandwidth = usage.bandwidth;
-
+                    obj.currentPlan.usage = usage;
                     res.send(200, {
                         data: obj
                     });

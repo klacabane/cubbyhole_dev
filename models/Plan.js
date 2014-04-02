@@ -11,22 +11,19 @@ var planSchema = new mongoose.Schema({
     isMutable: {type: Boolean, default: true}
 });
 
-/*
-*	[ Statics ]
-*/
+/**
+ * Statics
+ */
+
+/**
+ * removeAll
+ * @param callback
+ */
 planSchema.statics.removeAll = function (callback) {
 	this.model('Plan').remove({}, function (err) {
-		if (err) callback(err);
-		Bandwidth.remove({}, function (err) {
-			if (err) callback(err);
-			callback();
-		});
+		Bandwidth.remove({}, callback);
 	 });
 };
-
-/*
-*	[ Methods ]
-*/
 
 
 module.exports = mongoose.model('Plan', planSchema);
