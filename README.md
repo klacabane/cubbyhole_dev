@@ -24,3 +24,17 @@ Open the mongod console and let it open and running
 Git bash on the projet folder
 
 	node app.js
+
+# Changing IP Addresses
+
+Open config.js & replace line 3, 16, 19
+
+	address: "mongodb://localhost/Cubbyhole"
+
+	api: {
+        	address: "http://localhost:3000"
+    	}
+
+	webclient: {
+        	address: "http://localhost:8000"
+    	}
