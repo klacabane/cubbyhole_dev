@@ -40,24 +40,17 @@ itemSchema.pre('save', function (next) {
 
 	if (!this.isNew || this.isCopy) return next();
 
-    // new Item, make dir or write file
+    // new Item,
+    // make dir or move file from tmp to user dir
     this.getDirPath(function (err, path) {
         if (err) return next(err);
 
         if (that.type == 'folder')
-            fs.mkdir(path, function (e) {
-                if (e) return next(e);
-                next();
-            });
+            fs.mkdir(path, next);
         else
-            fs.readFile(that.meta.tmp, function (err, data) {
-                if (err) return next(err);
-                fs.writeFile(path, data, function (err) {
-                    if (err) return next(err);
-
-                    that.meta.tmp = undefined;
-                    next();
-                });
+            fs.rename(that.meta.tmp, path, function (err) {
+                that.meta.tmp = undefined;
+                next(err);
             });
     });
 });

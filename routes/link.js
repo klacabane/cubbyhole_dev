@@ -1,8 +1,8 @@
-var User = require('../models/User'),
-    Item = require('../models/Item'),
+var async = require('async'),
     mw = require('../tools/middlewares'),
-    async = require('async'),
-    Utils = require('../tools/utils');
+    Utils = require('../tools/utils'),
+    Item = require('../models/Item'),
+    User = require('../models/User');
 
 module.exports = function (app) {
     /**
@@ -77,10 +77,10 @@ module.exports = function (app) {
 
             async.waterfall([
                 // Check if it's a CH user
-                function (cb) {
-                    if (!from) return cb(null, null);
+                function (next) {
+                    if (!from) return next(null, null);
 
-                    User.findOne({_id: from}, cb);
+                    User.findOne({_id: from}, next);
                 },
                 // Send mail to link recipients,
                 // save membership if it's a CH user
@@ -131,7 +131,7 @@ module.exports = function (app) {
 
     /**
      *  DELETE
-     *  Make the item !isPublic if owner
+     *  Make the item private if owner
      *  or delete membership if participant
      */
     app.delete('/link/:id', mw.checkAuth, mw.validateId, function (req, res) {
@@ -143,7 +143,7 @@ module.exports = function (app) {
 
             if (Utils.isMember(user, item.link.recipients)) {
                 item.removeLinkRecipient(user);
-            } else {
+            } else if (user === item.owner.toString()) {
                 item.isPublic = false;
                 item.link = undefined;
                 item.lastModified = Date.now();

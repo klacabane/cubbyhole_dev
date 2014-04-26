@@ -1,24 +1,24 @@
-var Item = require('../models/Item'),
-    ItemShare = require('../models/ItemShare'),
-    User = require('../models/User'),
-    Notification = require('../models/Notification'),
-    UserPlan = require('../models/UserPlan'),
-	async = require('async'),
-	Utils = require('../tools/utils'),
-	mw = require('../tools/middlewares'),
+var admZip = require('adm-zip'),
+    async = require('async'),
     easyZip = require('easy-zip').EasyZip,
-    admZip = require('adm-zip'),
-    cache = require('../tools/cache'),
     fs = require('fs-extra'),
+    streamifier = require('streamifier'),
     Throttle = require('throttle'),
-    streamifier = require('streamifier');
+    Utils = require('../tools/utils'),
+    mw = require('../tools/middlewares'),
+    cache = require('../tools/cache'),
+    Item = require('../models/Item'),
+    ItemShare = require('../models/ItemShare'),
+    Notification = require('../models/Notification'),
+    User = require('../models/User'),
+    UserPlan = require('../models/UserPlan');
 
 module.exports = function (app) {
 	/**
 	 *	POST
 	 *  Create new Item(s)
 	 */
-    app.post('/item', mw.checkAuth, mw.parseMultipart, function (req, res) {
+    app.post('/item', mw.checkAuth, mw.handleMultipart, function (req, res) {
         var parentId = req.body.parent || req.parentId,
             type = req.body.type || 'file',
             userId = req.user,
@@ -36,7 +36,7 @@ module.exports = function (app) {
                     function (next) {
                         // Check if user is the parent's owner,
                         // if so we'll only need him for the next func,
-                        // else we'll need owner of the parent too
+                        // else we'll also need the owner
                         User.findOne({_id: userId})
                             .populate('currentPlan')
                             .exec(function (err, user) {
@@ -86,7 +86,7 @@ module.exports = function (app) {
                                 function (file, callback) {
                                     itemArgs.name = file.originalFilename;
                                     owner.getStorageUsage(function (err, usedStorage) {
-                                        if (Utils.bytesToMb(usedStorage + (totalUpload + file.size)) > cache.getPlan(ownerPlan.plan).storage)
+                                        if (Utils.bytesToMb(usedStorage + (totalUpload + file.size)) > /*cache.getPlan(ownerPlan.plan).storage*/ 10000000)
                                             return callback();
 
                                         totalUpload += file.size;
@@ -118,16 +118,16 @@ module.exports = function (app) {
 
                         var itemsFn = [];
                         items.forEach(function (it) {
-                            itemsFn.push(function (callback) {
+                            itemsFn.push(function (done) {
                                 it.save(function (err, newItem) {
-                                    callback(err, newItem);
+                                    done(err, newItem);
                                 });
                             });
                         });
 
                         async.parallel(itemsFn, function (err, newItems) {
                             if (err) return res.send(500);
-                            res.send(200, {
+                            res.send(201, {
                                 data: newItems
                             });
                         });
@@ -150,23 +150,22 @@ module.exports = function (app) {
                 Item.findOne({_id: parentId}, next);
             },
             function (parent, next) {
-                if (!parent) return next(true, 422);
+                if (!parent) return next(new Error('Parent not found'), 422);
 
                 Item.findOne({_id: itemId}, function (err, original) {
                     if (err) return next(err);
-                    if (!original) return next(true, 404);
+                    if (!original) return next(new Error('Item not found'), 404);
 
                     original.duplicateTree({parent: parent._id, owner: parent.owner}, function (err, dupl) {
                         next(err, original, dupl);
                     });
                 });
             },
-            function (original, dupl, cb) {
+            function (original, dupl, next) {
                 original.getDirPath(function (err, originPath) {
-                    if (err) return cb(err);
                     dupl.getDirPath(function (err, duplPath) {
-                        if (err) return cb(err);
-                        cb(null, {dupl: dupl, originPath: originPath, duplPath: duplPath});
+                        if (err) return next(err);
+                        next(null, {dupl: dupl, originPath: originPath, duplPath: duplPath});
                     });
                 });
             }
@@ -178,24 +177,14 @@ module.exports = function (app) {
                 .getChildrenTree(function (err, childrens) {
                     if (err) return res.send(500);
 
-                    var dupTree;
-                    if (!childrens.length) {
-                        dupTree = results.dupl;
-                    } else {
-                        dupTree = {
-                            _id: results.dupl._id,
-                            name: results.dupl.name,
-                            type: results.dupl.type,
-                            parent: results.dupl.parent,
-                            children: childrens
-                        }
-                    }
+                    var dupObj = results.dupl.toObject();
+                    dupObj.children = childrens;
 
                     fs.copy(results.originPath, results.duplPath, function (err) {
                         if (err) return res.send(500);
 
                         res.send(201, {
-                            data: dupTree
+                            data: dupObj
                         });
                     });
                 });
@@ -215,30 +204,30 @@ module.exports = function (app) {
 
                 async.waterfall([
                     // check if the request is authorized
-                    function (cb) {
-                        if (item.isPublic) return cb();
+                    function (next) {
+                        if (item.isPublic) return next();
 
                         mw.checkAuth(req, res, function () {
                             User.hasPermissions({user: req.user, item: item}, function (err, ok) {
-                                if (err) return cb(err);
-                                if (!ok) return cb(true, 403);
-                                cb();
+                                if (err) return next(err);
+                                if (!ok) return next(true, 403);
+                                next();
                             });
                         });
                     },
-                    function (cb) {
-                        if (item.type === 'file') return cb(null, item);
+                    function (next) {
+                        if (item.type === 'file') return next(null, item);
 
                         // Get folder childrens
                         item.getChildrenTree(function (err, childrens) {
-                            if (err) return cb(err);
+                            if (err) return next(err);
 
                             var obj = item.toObject();
                             Utils.sortRecv(childrens);
                             obj.children = childrens;
                             obj.owner = {_id: item.owner._id, email: item.owner.email};
 
-                            cb(null, obj);
+                            next(null, obj);
                         });
                     }
                 ], function (err, result) {
@@ -258,43 +247,41 @@ module.exports = function (app) {
 	app.get('/item', mw.checkAuth, function (req, res) {
         var user = req.user;
         async.parallel({
-            root: function (cb) {
+            root: function (next) {
                 Item.findOne({owner: user, isRoot: true}, function (err, rootFolder) {
-                    if (err) return cb(err);
+                    if (err) return next(err);
 
-                    rootFolder.formatWithSize(function (err, rootObj) {
-                        cb(null, rootObj);
-                    });
+                    rootFolder.formatWithSize(next);
                 });
             },
-            shares: function (cb) {
+            shares: function (next) {
                 ItemShare.find({'members._id': user})
                     .select('item members')
                     .populate('item')
                     .exec(function (err, shares) {
-                        if (err) return cb(err);
+                        if (err) return next(err);
 
                         var fn = [];
                         shares.forEach(function (share) {
                             var membership = share.getMembership(user);
 
                             if (membership.accepted)
-                                fn.push(function (cb) {
+                                fn.push(function (done) {
                                     share.item
                                         .formatWithSize(function (err, itemObj) {
-                                            if (err) return cb(err);
+                                            if (err) return done(err);
 
                                             Utils.setChildrensPerms(itemObj.children, membership.permissions);
                                             itemObj.parent = membership.custom.parent;
                                             itemObj.permissions = membership.permissions;
                                             itemObj.root = true;
 
-                                            cb(null, itemObj);
+                                            done(null, itemObj);
                                         });
                                 });
                         });
 
-                        async.parallel(fn, cb);
+                        async.parallel(fn, next);
                     });
             }
         },
@@ -380,7 +367,8 @@ module.exports = function (app) {
                             user.getTodayTransfer(function (err, dailyTransfer) {
                                 item.getSize(function (err, size) {
                                     if (err) return callback(err);
-                                    if (Utils.bytesToMb(dailyTransfer.dataShared + size) > userPlan.sharedQuota) return callback(true, 403);
+                                    if (Utils.bytesToMb(dailyTransfer.dataShared + size) > userPlan.sharedQuota)
+                                        return callback(new Error('Shared quota reached'), 403);
 
                                     dailyTransfer.dataShared += size;
                                     dailyTransfer.save(callback);
@@ -404,7 +392,8 @@ module.exports = function (app) {
                     });
                 } else {
                     // user is authenticated,
-                    // if item is shared and user is a member, don't count this download as sharedData
+                    // if item is shared and user is a member,
+                    // don't count this download as sharedData
                     mw.checkAuth(req, res, function () {
                         if (req.user === item.owner.toString()) {
                             download();
@@ -487,7 +476,7 @@ module.exports = function (app) {
                     if (item.isShared) return next();
 
                     if (!isOwner)
-                        next(true, 403);
+                        next(new Error('Not authorized'), 403);
                     else
                         async.parallel([
                             // Check if any of items' children is shared,
@@ -615,13 +604,11 @@ module.exports = function (app) {
                                 if (oldParent.isShared && !newParent.isShared ||
                                     !oldParent.isShared && newParent.isShared)
                                     item.setShared(newParent.isShared, function (err, uitem) {
-                                        if (err) return next(err);
-                                        next(null, oldPath, uitem);
+                                        next(err, oldPath, uitem);
                                     });
                                 else
                                     item.save(function (err, uitem) {
-                                        if (err) return next(err);
-                                        next(null, oldPath, uitem);
+                                        next(err, oldPath, uitem);
                                     })
                             });
                         });
@@ -631,15 +618,11 @@ module.exports = function (app) {
 
                     uitem.getDirPath(function (err, newPath) {
                         if (err) return res.send(500);
-                        fs.copy(oldPath, newPath, function (err) {
+                        fs.rename(oldPath, newPath, function (err) {
                             if (err) return res.send(500);
 
-                            fs.remove(oldPath, function (err) {
-                                if (err) return res.send(500);
-
-                                res.send(200, {
-                                    data: uitem
-                                });
+                            res.send(200, {
+                                data: uitem
                             });
                         });
                     });

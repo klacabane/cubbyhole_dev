@@ -33,19 +33,20 @@ module.exports = {
             next();
         });
     },
-    parseMultipart: function (req, res, next) {
+    handleMultipart: function (req, res, next) {
         if (req.get('content-type').indexOf('multipart/form-data') > -1) {
-            new multiparty.Form()
-                .parse(req, function (err, fields, files) {
-                    if (err) return next(err);
+            var form = new multiparty.Form({uploadDir: './storage'});
 
-                    req.parentId = fields.parent[0];
-                    req.files = [];
-                    for (var fileName in files) {
-                        req.files.push(files[fileName][0]);
-                    }
-                    next();
-                });
+            form.parse(req, function (err, fields, files) {
+                if (err) return next(err);
+
+                req.parentId = fields.parent[0];
+                req.files = [];
+                for (var fileName in files) {
+                    req.files.push(files[fileName][0]);
+                }
+                next();
+            });
         } else {
             next();
         }

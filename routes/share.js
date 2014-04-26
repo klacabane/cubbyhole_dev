@@ -167,13 +167,6 @@ module.exports = function (app) {
     });
 
     /**
-     * GET
-     */
-    app.get('/share/:id', mw.validateId, function (req, res) {
-
-    });
-
-    /**
      *  GET
      *  Returns all Shares of authenticated user
      */
