@@ -82,7 +82,7 @@ module.exports = function (app) {
         User.findOne({_id: userId}, function (err, user) {
             if (err) return res.send(500);
 
-            user.updatePlan(plan._id, function (err) {
+            user.updatePlan(plan, function (err) {
                 if (err) return res.send(500);
 
                 res.redirect(cfg.webclient.address + "/webapp.html#/user?paid=" + plan.name);

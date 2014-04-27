@@ -3,7 +3,8 @@ var User = require('../models/User'),
 	Item = require('../models/Item'),
     ItemShare = require('../models/ItemShare'),
     mw = require('../tools/middlewares'),
-    cfg = require('../config.js');
+    cfg = require('../config.js'),
+    geoip = require('geoip');
 
 module.exports = function (app) {
     require('../routes/user')(app);
@@ -13,6 +14,8 @@ module.exports = function (app) {
     require('../routes/link')(app);
     require('../routes/notification')(app);
 
+
+    var city = new geoip.City('./datas/GeoLiteCity.dat');
     /**
      *  POST
      *  Signin
@@ -59,19 +62,22 @@ module.exports = function (app) {
      */
     app.post('/auth/signup', function (req, res) {
 		var email = req.body.email,
-			pw = req.body.pass;
+			pw = req.body.pass,
+            ip = '';
 
 		if (!email || !pw) return res.send(400);
 
 		User.findOne({email: email.toLowerCase().trim(), deleted: false}, function (err, user) {
 			if (err) return res.send(500);
 			if (user) return res.send(422);
-			
-			new User({email: email, password: pw, verified: true}) // school blocking proxy
+
+            var location = city.lookupSync(ip);
+			new User({email: email, password: pw, verified: true /* school blocking proxy */, location: location})
 				.save(function (err, u) {
 					if (err) return res.send(500);
 					
 					Utils.sendEmail(u, function (err) {
+                        if (err) console.log(err);
 					});
 
                     res.send(201);

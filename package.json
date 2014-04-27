@@ -11,7 +11,6 @@
     "async": "*",
     "mongoose": "*",
     "bcrypt": "*",
-    "q": "*",
     "mongoose-path-tree": "*",
     "jwt-simple": "*",
     "nodemailer": "*",
@@ -21,6 +20,7 @@
     "throttle": "1.0.3",
     "streamifier": "0.1.0",
     "multiparty": "3.2.4",
-    "paypal-rest-sdk": "0.6.4"
+    "paypal-rest-sdk": "0.6.4",
+    "geoip": "*"
   }
 }

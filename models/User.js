@@ -16,7 +16,8 @@ var userSchema = new mongoose.Schema({
 	verified: {type: Boolean, default: false},
     deleted: {type: Boolean, default: false},
     isAdmin: Boolean,
-    isAllowed: {type: Boolean, default: true}
+    isAllowed: {type: Boolean, default: true},
+    location: mongoose.Schema.Types.Mixed
 });
 
 /**
@@ -40,7 +41,7 @@ userSchema.pre('save', function (next) {
                 Plan.findOne({price: 0}, function (err, plan) {
                     if (err) return cb(err);
 
-                    UserPlan.create({ user: that._id, plan: plan._id }, function (err, userPlan) {
+                    UserPlan.create({user: that._id, plan: plan._id, isFree: true}, function (err, userPlan) {
                         if (userPlan) {
                             that.currentPlan = userPlan._id;
                         }
@@ -148,12 +149,13 @@ userSchema.methods.getTodayTransfer = function (callback) {
  * @param planId    @id new plan Id
  * @param callback
  */
-userSchema.methods.updatePlan = function (planId, callback) {
-    var that = this;
+userSchema.methods.updatePlan = function (plan, callback) {
+    var that = this,
+        isFree = plan.price === 0;
 
     async.parallel({
         newPlan: function (cb) {
-            UserPlan.create({user: that._id, plan: planId}, cb);
+            UserPlan.create({user: that._id, plan: plan._id, isFree: isFree}, cb);
         },
         oldPlan: function (cb) {
             UserPlan.findByIdAndUpdate(that.currentPlan, {active: false}, cb);

@@ -12,7 +12,8 @@ var userPlanSchema = new mongoose.Schema({
             upload: {type: Number, default: 0},    // kb/s
             download: {type: Number, default: 0}   // kb/s
         }
-    }
+    },
+    isFree: Boolean
 });
 
 module.exports = mongoose.model('UserPlan', userPlanSchema);
