@@ -618,6 +618,7 @@ module.exports = function (app) {
 
                     uitem.getDirPath(function (err, newPath) {
                         if (err) return res.send(500);
+
                         fs.rename(oldPath, newPath, function (err) {
                             if (err) return res.send(500);
 

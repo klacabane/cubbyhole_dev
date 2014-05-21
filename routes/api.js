@@ -63,7 +63,7 @@ module.exports = function (app) {
     app.post('/auth/signup', function (req, res) {
 		var email = req.body.email,
 			pw = req.body.pass,
-            ip = '';
+            ip = req.body.ip;
 
 		if (!email || !pw) return res.send(400);
 
