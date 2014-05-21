@@ -11,7 +11,8 @@ var admZip = require('adm-zip'),
     ItemShare = require('../models/ItemShare'),
     Notification = require('../models/Notification'),
     User = require('../models/User'),
-    UserPlan = require('../models/UserPlan');
+    UserPlan = require('../models/UserPlan'),
+    cfg = require('../config');
 
 module.exports = function (app) {
 	/**
@@ -116,13 +117,12 @@ module.exports = function (app) {
                         if (err) return res.send(500);
                         if (!items.length) return res.send(403);
 
-                        var itemsFn = [];
-                        items.forEach(function (it) {
-                            itemsFn.push(function (done) {
+                        var itemsFn = items.map(function (it) {
+                            return function (done) {
                                 it.save(function (err, newItem) {
                                     done(err, newItem);
                                 });
-                            });
+                            };
                         });
 
                         async.parallel(itemsFn, function (err, newItems) {
@@ -164,8 +164,11 @@ module.exports = function (app) {
             function (original, dupl, next) {
                 original.getDirPath(function (err, originPath) {
                     dupl.getDirPath(function (err, duplPath) {
-                        if (err) return next(err);
-                        next(null, {dupl: dupl, originPath: originPath, duplPath: duplPath});
+                        next(err, {
+                            dupl: dupl,
+                            originPath: originPath,
+                            duplPath: duplPath
+                        });
                     });
                 });
             }
@@ -245,17 +248,17 @@ module.exports = function (app) {
      *  Return all items of authenticated user
      */
 	app.get('/item', mw.checkAuth, function (req, res) {
-        var user = req.user;
+        var userId = req.user;
         async.parallel({
             root: function (next) {
-                Item.findOne({owner: user, isRoot: true}, function (err, rootFolder) {
+                Item.findOne({owner: userId, isRoot: true}, function (err, rootFolder) {
                     if (err) return next(err);
 
                     rootFolder.formatWithSize(next);
                 });
             },
             shares: function (next) {
-                ItemShare.find({'members._id': user})
+                ItemShare.find({'members._id': userId})
                     .select('item members')
                     .populate('item')
                     .exec(function (err, shares) {
@@ -283,6 +286,12 @@ module.exports = function (app) {
 
                         async.parallel(fn, next);
                     });
+            },
+            removed: function (next) {
+                Item.find({
+                    owner: userId,
+                    isRemoved: true
+                }, next);
             }
         },
         function (err, results) {
@@ -302,7 +311,8 @@ module.exports = function (app) {
                 children: childrens
             };
             res.send(200, {
-                data: [rootDir]
+                data: [rootDir],
+                removed: results.removed
             });
         });
 	});
@@ -516,7 +526,31 @@ module.exports = function (app) {
                         function (err) {
                             if (err) return next(err);
 
-                            item.remove(next);
+                            // If request comes from web client
+                            // we keep a reference of the deleted item to notify sync client
+                            if (req.headers['origin'] !== cfg.webclient.address)
+                                item.remove(next);
+                            else
+                                async.series([
+                                    function (done) {
+                                        item.removeChildrens(done);
+                                    },
+                                    function (done) {
+                                        item.removeDir(done);
+                                    }
+                                ],
+                                function (err) {
+                                    if (err) return next(err);
+
+                                    item.isRemoved = true;
+                                    item.getDirPath(function (err, oldPath) {
+                                        if (err) return next(err);
+
+                                        item.meta.oldPath = oldPath;
+                                        item.parent = undefined;
+                                        item.save(next);
+                                    });
+                                });
                         });
                 },
                 // Item is shared,

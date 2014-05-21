@@ -1,6 +1,7 @@
 var Utils = require('../tools/utils'),
     User = require('../models/User'),
-    multiparty = require('multiparty');
+    multiparty = require('multiparty'),
+    cfg = require('../config');
 
 module.exports = {
 	checkAuth: function (req, res, next) {
@@ -35,7 +36,7 @@ module.exports = {
     },
     handleMultipart: function (req, res, next) {
         if (req.get('content-type').indexOf('multipart/form-data') > -1) {
-            var form = new multiparty.Form({uploadDir: './storage'});
+            var form = new multiparty.Form({uploadDir: cfg.storage.dir});
 
             form.parse(req, function (err, fields, files) {
                 if (err) return next(err);

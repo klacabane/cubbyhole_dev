@@ -1,7 +1,7 @@
 var mongoose = require('mongoose'),
-	tree = require('mongoose-path-tree'),
-	cfg = require('../config'),
-	fs = require('fs-extra'),
+    tree = require('mongoose-path-tree'),
+    cfg = require('../config'),
+    fs = require('fs-extra'),
     path = require('path'),
     async = require('async'),
     Utils = require('../tools/utils'),
@@ -18,6 +18,7 @@ var itemSchema = new mongoose.Schema({
     isCopy:         Boolean,
     isShared:       Boolean,
     isPublic:       Boolean,
+    isRemoved:      Boolean,
     link: {
         url:            String,
         creationDate:   Date,
@@ -57,15 +58,31 @@ itemSchema.pre('save', function (next) {
 
 /** remove */
 itemSchema.pre('remove', function (next) {
-    this.getDirPath(function (err, path) {
-        if (err) return next(err);
-        fs.remove(path, next);
-    });
+    this.removeDir(next);
 });
 
 /**
  *	Methods
  */
+itemSchema.methods.removeDir = function (next) {
+    this.getDirPath(function (err, path) {
+        if (err) return next(err);
+        fs.remove(path, next);
+    });
+};
+
+itemSchema.methods.removeChildrens = function (next) {
+    this.model('Item')
+        .find({parent: this._id}, function (err, childrens) {
+            if (err || !childrens.length) return next(err);
+
+            async.each(
+                childrens,
+                function (child, done) {
+                    child.remove(done);
+                }, next);
+        });
+};
 
 /**
  * getDirPath
@@ -128,25 +145,20 @@ itemSchema.methods.duplicate = function (args, callback) {
 itemSchema.methods.duplicateTree = function (args, callback) {
     var that = this;
     this.duplicate(args, function (err, dupl) {
-        if (err) return callback(err);
-        if (that.type === 'file') return callback(null, dupl);
+        if (err || that.type === 'file') return callback(err, dupl);
 
         that.getChildrenTree(function (err, childrens) {
-            if (err) return callback(err);
-            if (!childrens.length) return callback(null, dupl);
+            if (err || !childrens.length) return callback(err, dupl);
 
-            var fn = [];
-            childrens.forEach(function (c) {
-                fn.push(function (cb) {
+            var fn = childrens.map(function (c) {
+                return function (done) {
                     new that.constructor(c)
-                        .duplicateTree({parent: dupl._id, owner: args.owner}, cb);
-                });
+                        .duplicateTree({parent: dupl._id, owner: args.owner}, done);
+                };
             });
 
             async.parallel(fn, function (err) {
-                if (err) return callback(err);
-
-                callback(null, dupl);
+                callback(err, dupl);
             });
         });
     });
