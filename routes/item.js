@@ -70,7 +70,7 @@ module.exports = function (app) {
                                 if (err) return next(err);
                                 if (item) itemArgs.name = Utils.rename(itemArgs.name);
 
-                                itemArgs.meta = {size:0};
+                                itemArgs.meta.size = 0;
                                 items.push(new Item(itemArgs));
 
                                 next();
@@ -548,6 +548,8 @@ module.exports = function (app) {
 
                                         item.meta.oldPath = oldPath;
                                         item.parent = undefined;
+                                        item.markModified('meta');
+                                        
                                         item.save(next);
                                     });
                                 });
@@ -594,6 +596,18 @@ module.exports = function (app) {
             });
 		});
 	});
+
+    /**
+     *  DELETE
+     *  Remove resource reference
+     */
+    app.delete('/item/:id/confirm', mw.checkAuth, mw.validateId, function (req, res) {
+        Item.findOneAndRemove({_id: req.params.id, isRemoved: true}, function (err) {
+            if (err) return res.send(500);
+
+            res.send(200);
+        });
+    });
 
 	/**
 	 *	PUT
