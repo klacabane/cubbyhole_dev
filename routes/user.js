@@ -71,6 +71,23 @@ module.exports = function (app) {
 
     /**
      *  GET
+     *  Request a password reset
+     */
+    app.get('/user/:email/password', function (req, res) {
+        User.findOne({email: req.params.email}, function (err, user) {
+            if (err) return res.send(500);
+            if (!user) return res.send(404);
+
+            Utils.sendEmail(user, {resetPassword: true}, function (err) {
+                if (err) return res.send(500);
+
+                res.send(200);
+            });
+        });
+    });
+
+    /**
+     *  GET
      *  Return all users with pagination
      */
     app.get('/user/:start/:limit', mw.checkAuth, mw.isAdmin, function (req, res) {
@@ -116,10 +133,30 @@ module.exports = function (app) {
 
     /**
      *  PUT
+     *  Update user password
+     */
+    app.put('/user/password/:token?', mw.checkAuth, function (req, res) {
+        User.findOne({_id: req.user}, function (err, user) {
+            if (err) return res.send(500);
+            if (!user) return res.send(404);
+
+            user.password = req.body.password;
+            user.save(function (err) {
+                if (err) return res.send(500);
+
+                res.send(200);
+            });
+        });
+    });
+
+    /**
+     *  PUT
      *  Disable/Enable user account
      */
     app.put('/user/:id', mw.checkAuth, mw.isAdmin, mw.validateId, function (req, res) {
-        var isAllowed = req.body.isAllowed == 0 ? false : true;
+        var isAllowed = (req.body.isAllowed == 0)
+            ? false
+            : true;
 
         User.findOne({_id: req.params.id}, function (err, user) {
             if (err) return res.send(500);
@@ -134,13 +171,13 @@ module.exports = function (app) {
         });
     });
 
-
     /**
      *  DELETE
      */
     function deleteUser(id, callback) {
         User.findOne({_id: id, deleted: false}, function (err, user) {
-            if (err || !user) return callback(true);
+            if (err) return callback(err);
+            if (!user) return callback(new Error('User not found'));
 
             user.deleted = true;
             user.save(callback);

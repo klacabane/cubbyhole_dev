@@ -5,19 +5,22 @@ var	jwt = require('jwt-simple'),
 	nodemailer = require('nodemailer'),
     path = require('path'),
 	Plan = require('../models/Plan'),
-	Bandwidth = require('../models/Bandwidth');
+	Bandwidth = require('../models/Bandwidth'),
+    Cache = require('../tools/cache');
 
 var Utils = {
 	/*
 	 *  Token
 	 */
-	generateToken: function (u, r) {
-		var dur = r ? cfg.token.expiration_long : cfg.token.expiration;
+	generateToken: function (user, remember) {
+		var duration = remember
+            ? cfg.token.expiration_long
+            : cfg.token.expiration;
 
 		var token = jwt.encode({
-			id: u._id, 
-			mail: u.mail, 
-			exp: Date.now() + (86400000 * dur)
+			id: user._id,
+			mail: user.mail,
+			exp: Date.now() + (86400000 * duration)
 		}, cfg.token.secret);
 
 		return token;
@@ -27,13 +30,19 @@ var Utils = {
 	},
 	isTokenValid: function (token) {
 		try {
-			var u = jwt.decode(token, cfg.token.secret);
+			var tkn = jwt.decode(token, cfg.token.secret);
 		} catch (err) {
 			return false;
 		}
 
-		if (u.exp && u.exp < Date.now())
+		if (tkn.exp && tkn.exp < Date.now())
 			return false;
+
+        if (tkn.isNonce)
+            if (Cache.isBlacklisted(token))
+                return false;
+            else
+                Cache.blacklistToken(token);
 
 		return true;
 	},
@@ -97,31 +106,46 @@ var Utils = {
             };
 
         var smtpTransport = nodemailer.createTransport("SMTP", {
-            service: "Gmail",
+            service: "hotmail",
             auth: {
-                user: "cubbyholeapi@gmail.com",
-                pass: "cubbyhole1"
+                user: "cubbyholeadm@outlook.com",
+                pass: "Supinf0cubbyhole"
             }
         });
 
-        var token = jwt.encode({
+        var tokenOpts = {
             id: recipient._id,
             created: Date.now()
-        }, cfg.token.secret);
+        };
 
         if (typeof details === 'function') {    // Account Verification
+            var token = jwt.encode(tokenOpts, cfg.token.secret);
             options.subject = "Cubbyhole signup confirmation";
             options.html = "<a href='" + cfg.api.address + "/auth/confirm/" + token + "'>Confirm your mail</a>";
         } else {
             if (details.hasOwnProperty('share')) {
+                var token = jwt.encode(tokenOpts, cfg.token.secret);
+
                 options.subject = details.from.email + ' wants to share the ' + details.item.type + ' ' + details.item.name + ' with you.';
                 options.html = "<a href='" + cfg.api.address + "/share/confirm/" + details.share + "/" + token + "'>View the " + details.item.type + "</a>";
             } else if (details.hasOwnProperty('link')) { // Link
-                var from = details.from ? details.from.email : 'Someone';
+                var from = details.from
+                    ? details.from.email
+                    : 'Someone';
+
                 options.subject = from + ' invited you to see the resource ' + details.item.name + '.';
                 options.html = "<a href='" + cfg.webclient.address + "/webapp.html#" + details.link + "'>View the " + details.item.type + "</a>";
-            } else { // Delete
+            } else if (details.hasOwnProperty('delete')) { // Delete
                 options.subject = details.from.email + ' removed the ' + details.item.type + ' ' + details.item.name + '.';
+            } else if (details.hasOwnProperty('resetPassword')) {
+                // token validity set to 1hr
+                tokenOpts.exp = Date.now() + 3600000;
+                tokenOpts.isNonce = true;
+                var token = jwt.encode(tokenOpts, cfg.token.secret);
+
+                options.subject = 'Cubbyhole password reset';
+                options.html = 'If you didn\'t request a password reset, please ignore this email. ';
+                options.html += "<a href='" + cfg.webclient.address + "/resetPassword/" + token + "'>Reset your password</a>";
             }
         }
 
@@ -133,8 +157,8 @@ var Utils = {
         });
 	},
     _sortByName: function (a, b) {
-        if(a.name.toUpperCase() < b.name.toUpperCase()) return -1;
-        if(a.name.toUpperCase() > b.name.toUpperCase()) return 1;
+        if (a.name.toUpperCase() < b.name.toUpperCase()) return -1;
+        if (a.name.toUpperCase() > b.name.toUpperCase()) return 1;
         return 0;
     },
     sortRecv: function (childrens) {

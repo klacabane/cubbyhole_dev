@@ -139,7 +139,6 @@ module.exports = function (app) {
     /**
      *	POST
      *  Create copy of an item
-     *  Needs ownership validation
      */
     app.post('/item/:id', mw.checkAuth, mw.validateId, function (req, res) {
         var parentId = req.body.parent,

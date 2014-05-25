@@ -7,7 +7,8 @@ var Cache = {
         Plans: [],
         Bandwidths: [],
         _plans: {},
-        _bandwidths: {}
+        _bandwidths: {},
+        _tokenBlacklist: []
     },
     init: function (callback) {
         this.store.Plans = [];
@@ -46,6 +47,20 @@ var Cache = {
     },
     getBandwidth: function (id) {
         return this.store._bandwidths[id];
+    },
+    blacklistToken: function (token) {
+        this.store._tokenBlacklist.push(token);
+    },
+    isBlacklisted: function (token) {
+        var blacklisted = false;
+        for (var i = 0, length = this.store._tokenBlacklist.length; i < length; i++) {
+            var blTkn = this.store._tokenBlacklist[i];
+            if (blTkn === token) {
+                blacklisted = true;
+                break;
+            }
+        }
+        return blacklisted;
     }
 };
 
