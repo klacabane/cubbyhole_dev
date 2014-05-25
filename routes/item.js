@@ -199,7 +199,7 @@ module.exports = function (app) {
 	 */
 	app.get('/item/:id', mw.validateId, function (req, res) {
 		Item.findOne({_id: req.params.id})
-            .populate('owner')
+			.populate('owner')
             .exec(function (err, item) {
                 if (err) return res.send(500);
                 if (!item) return res.send(404);
@@ -246,9 +246,10 @@ module.exports = function (app) {
      *	GET
      *  Return all items of authenticated user
      */
-	app.get('/item', mw.checkAuth, function (req, res) {
-        var userId = req.user;
-        async.parallel({
+    app.get('/item', mw.checkAuth, function (req, res) {
+	    var userId = req.user;
+
+	    async.parallel({
             root: function (next) {
                 Item.findOne({owner: userId, isRoot: true}, function (err, rootFolder) {
                     if (err) return next(err);
@@ -263,25 +264,25 @@ module.exports = function (app) {
                     .exec(function (err, shares) {
                         if (err) return next(err);
 
-                        var fn = [];
-                        shares.forEach(function (share) {
-                            var membership = share.getMembership(user);
+		                for (var i = 0, fn = [], len = shares.length; i < len; i++) {
+			                var share = shares[i],
+				                membership = share.getMembership(userId);
 
-                            if (membership.accepted)
-                                fn.push(function (done) {
-                                    share.item
-                                        .formatWithSize(function (err, itemObj) {
-                                            if (err) return done(err);
+			                if (membership.accepted)
+				                fn.push(function (done) {
+					                share.item
+						                .formatWithSize(function (err, itemObj) {
+							                if (err) return done(err);
 
-                                            Utils.setChildrensPerms(itemObj.children, membership.permissions);
-                                            itemObj.parent = membership.custom.parent;
-                                            itemObj.permissions = membership.permissions;
-                                            itemObj.root = true;
+							                Utils.setChildrensPerms(itemObj.children, membership.permissions);
+							                itemObj.parent = membership.custom.parent;
+							                itemObj.permissions = membership.permissions;
+							                itemObj.root = true;
 
-                                            done(null, itemObj);
-                                        });
-                                });
-                        });
+							                done(null, itemObj);
+						                });
+				                });
+		                }
 
                         async.parallel(fn, next);
                     });
@@ -296,9 +297,10 @@ module.exports = function (app) {
         function (err, results) {
             if (err) return res.send(500);
 
-            results.shares.forEach(function (share) {
-                Utils.insertAtParentPath([results.root], share);
-            });
+	        for (var i = 0, len = results.shares; i < len; i++) {
+		        var sh = results.shares[i];
+		        Utils.insertAtParentPath([results.root], sh);
+	        }
 
             var childrens = results.root.children;
             Utils.sortRecv(childrens);
@@ -321,8 +323,8 @@ module.exports = function (app) {
      *  Download
      *  Returns resource ( file or folder.zip ) buffer
      */
-	app.get('/item/:id/download/:token?', mw.validateId, function (req, res) {
-		Item.findOne({_id: req.params.id}, function (err, item) {
+    app.get('/item/:id/download/:token?', mw.validateId, function (req, res) {
+	    Item.findOne({_id: req.params.id}, function (err, item) {
 			if (err) return res.send(500);
 			if (!item) return res.send(404);
 
@@ -500,7 +502,8 @@ module.exports = function (app) {
                                         sharedChilds,
                                         function (sharedChild, cb) {
                                             ItemShare.findOne({item: sharedChild}, function (err, ishare) {
-                                                if (err || !ishare) return cb(true);
+                                                if (err) return cb(err);
+	                                            if (!ishare) return cb(new Error('ItemShare not found'));
 
                                                 ishare.remove(cb);
                                             });
@@ -609,7 +612,7 @@ module.exports = function (app) {
     });
 
 	/**
-	 *	PUT
+	 *  PUT
 	 *  Update resource name or parent
 	 */
     app.put('/item/:id', mw.checkAuth, mw.validateId, function (req, res) {

@@ -60,7 +60,9 @@ var Utils = {
 		};
 	},
 	rename: function (name) {
-		return name.substring(0, name.split('.')[0].length) + Date.now() + name.substring(name.split('.')[0].length, name.length);
+		return name.substring(0, name.split('.')[0].length)
+			+ Date.now()
+			+ name.substring(name.split('.')[0].length, name.length);
 	},
 	/* DB */
 	insertPlanAndBw: function (callback) {

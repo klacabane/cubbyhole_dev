@@ -115,13 +115,14 @@ module.exports = function (app) {
                         users.pop();
                         hasMore = true;
                     }
-                    users.forEach(function (user) {
-                        var userObj = user.format(),
-                            planId = user.currentPlan.plan;
 
-                        userObj.currentPlan.plan = cache.getPlan(planId);
-                        results.push(userObj);
-                    });
+		            for (var i = 0, len = users.length; i < len; i++) {
+			            var userObj = users[i].format(),
+				            planId = users[i].currentPlan.plan;
+
+			            userObj.currentPlan.plan = cache.getPlan(planId);
+			            results.push(userObj);
+		            }
 
                     res.send(200, {
                         data: results,

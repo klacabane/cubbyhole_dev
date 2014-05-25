@@ -25,7 +25,7 @@ module.exports = function (app) {
      *  401: email is not verified
      */
     app.post('/auth/signin', function (req, res) {
-		var email = req.body.email,
+	    var email = req.body.email,
 			pw = req.body.pass,
 			rememberMe = req.body.rememberMe;
 
