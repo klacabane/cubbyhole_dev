@@ -40,7 +40,7 @@ module.exports = function (app) {
 
     /**
      *  GET
-     *  Returns all link of authenticated user
+     *  Return all links of authenticated user
      */
     app.get('/link', mw.checkAuth, function (req, res) {
         var user = req.user;
@@ -50,9 +50,10 @@ module.exports = function (app) {
             .exec(function (err, items) {
                 if (err) return res.send(500);
 
-                items.forEach(function (item) {
-                    item.owner = {_id: item.owner._id, email: item.owner.email};
-                });
+		        for (var i = 0, len = items.length; i < len; i++) {
+			        var item = items[i];
+			        item.owner = {_id: item.owner._id, email: item.owner.email};
+		        }
 
                 res.send(200, {
                     data: items

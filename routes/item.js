@@ -16,7 +16,7 @@ var admZip = require('adm-zip'),
 
 module.exports = function (app) {
 	/**
-	 *	POST
+	 *  POST
 	 *  Create new Item(s)
 	 */
     app.post('/item', mw.checkAuth, mw.handleMultipart, function (req, res) {
@@ -194,52 +194,51 @@ module.exports = function (app) {
     });
 
 	/**
-	 * 	GET
-	 * 	Return single item
-	 */
+     *  GET
+     *  Return single item
+     */
 	app.get('/item/:id', mw.validateId, function (req, res) {
 		Item.findOne({_id: req.params.id})
 			.populate('owner')
-            .exec(function (err, item) {
-                if (err) return res.send(500);
-                if (!item) return res.send(404);
+			.exec(function (err, item) {
+				if (err) return res.send(500);
+				if (!item) return res.send(404);
 
-                async.waterfall([
-                    // check if the request is authorized
-                    function (next) {
-                        if (item.isPublic) return next();
+				async.waterfall([
+					// check if the request is authorized
+					function (next) {
+						if (item.isPublic) return next();
 
-                        mw.checkAuth(req, res, function () {
-                            User.hasPermissions({user: req.user, item: item}, function (err, ok) {
-                                if (err) return next(err);
-                                if (!ok) return next(true, 403);
-                                next();
-                            });
-                        });
-                    },
-                    function (next) {
-                        if (item.type === 'file') return next(null, item);
+						mw.checkAuth(req, res, function () {
+							User.hasPermissions({user: req.user, item: item}, function (err, ok) {
+								if (!ok) return next(new Error('User doesnt have permissions'), 403);
+								next(err);
+							});
+						});
+					},
+					function (next) {
+						if (item.type === 'file') return next(null, item);
 
-                        // Get folder childrens
-                        item.getChildrenTree(function (err, childrens) {
-                            if (err) return next(err);
+						// Get folder childrens
+						item.getChildrenTree(function (err, childrens) {
+							if (err) return next(err);
 
-                            var obj = item.toObject();
-                            Utils.sortRecv(childrens);
-                            obj.children = childrens;
-                            obj.owner = {_id: item.owner._id, email: item.owner.email};
+							var obj = item.toObject();
+							Utils.sortRecv(childrens);
+							obj.children = childrens;
+							obj.owner = {_id: item.owner._id, email: item.owner.email};
 
-                            next(null, obj);
-                        });
-                    }
-                ], function (err, result) {
-                    if (err) return res.send(500);
+							next(null, obj);
+						});
+					}],
+					function (err, result) {
+						if (err) return res.send(500);
 
-                    res.send(200, {
-                        data: result
-                    });
-                });
-            });
+						res.send(200, {
+							data: result
+						});
+				});
+			});
 	});
 
     /**
@@ -468,134 +467,134 @@ module.exports = function (app) {
 	});
 
 	/**
-	 * 	DELETE
-	 * 	Removes resources and childrens if any
+	 *  DELETE
+	 *  Removes resources and childrens if any
 	 */
 	app.delete('/item/:id', mw.checkAuth, mw.validateId, function (req, res) {
-        var user = req.user;
+	    var user = req.user;
 
 		Item.findOne({_id: req.params.id}, function (err, item) {
 			if (err) return res.send(500);
 			if (!item) return res.send(404);
 
-            var isOwner = user === item.owner.toString();
+	        var isOwner = user === item.owner.toString();
 
-            async.parallel([
-                // Item is not shared,
-                // make sure user is the owner
-                function (next) {
-                    if (item.isShared) return next();
+	        async.parallel([
+	            // Item is not shared,
+	            // make sure user is the owner
+	            function (next) {
+	                if (item.isShared) return next();
 
-                    if (!isOwner)
-                        next(new Error('Not authorized'), 403);
-                    else
-                        async.parallel([
-                            // Check if any of items' children is shared,
-                            // and delete shares if any
-                            function (callback) {
-                                // Delete his owners' shares
-                                item.getChildrenTree(function (err, childrens) {
-                                    if (err) return callback(err);
+	                if (!isOwner)
+	                    next(new Error('Not authorized'), 403);
+	                else
+	                    async.parallel([
+	                        // Check if any of items' children is shared,
+	                        // and delete shares if any
+	                        function (callback) {
+	                            // Delete his owners' shares
+	                            item.getChildrenTree(function (err, childrens) {
+	                                if (err) return callback(err);
 
-                                    var sharedChilds = Utils.getSharedChilds(childrens);
-                                    async.each(
-                                        sharedChilds,
-                                        function (sharedChild, cb) {
-                                            ItemShare.findOne({item: sharedChild}, function (err, ishare) {
-                                                if (err) return cb(err);
+	                                var sharedChilds = Utils.getSharedChilds(childrens);
+	                                async.each(
+	                                    sharedChilds,
+	                                    function (sharedChild, cb) {
+	                                        ItemShare.findOne({item: sharedChild}, function (err, ishare) {
+	                                            if (err) return cb(err);
 	                                            if (!ishare) return cb(new Error('ItemShare not found'));
 
-                                                ishare.remove(cb);
-                                            });
-                                        }, callback);
-                                });
-                            },
-                            function (callback) {
-                                // And his memberships' shares
-                                ItemShare.find({$or: [{'owner._id': user}, {'members._id': user}], 'members.custom.parent': item._id})
-                                    .exec(function (err, ishares) {
-                                        if (err) return callback(err);
+	                                            ishare.remove(cb);
+	                                        });
+	                                    }, callback);
+	                            });
+	                        },
+	                        function (callback) {
+	                            // And his memberships' shares
+	                            ItemShare.find({$or: [{'owner._id': user}, {'members._id': user}], 'members.custom.parent': item._id})
+	                                .exec(function (err, ishares) {
+	                                    if (err) return callback(err);
 
-                                        async.each(
-                                            ishares,
-                                            function (ishare, cb) {
-                                                ishare.removeMember(user);
-                                                ishare.save(cb);
-                                            },
-                                            callback);
-                                    });
-                            }],
-                        function (err) {
-                            if (err) return next(err);
+	                                    async.each(
+	                                        ishares,
+	                                        function (ishare, cb) {
+	                                            ishare.removeMember(user);
+	                                            ishare.save(cb);
+	                                        },
+	                                        callback);
+	                                });
+	                        }],
+	                    function (err) {
+	                        if (err) return next(err);
 
-                            // If request comes from web client
-                            // we keep a reference of the deleted item to notify sync client
-                            if (req.headers['origin'] !== cfg.webclient.address)
-                                item.remove(next);
-                            else
-                                async.series([
-                                    function (done) {
-                                        item.removeChildrens(done);
-                                    },
-                                    function (done) {
-                                        item.removeDir(done);
-                                    }
-                                ],
-                                function (err) {
-                                    if (err) return next(err);
+	                        // If request comes from web client
+	                        // we keep a reference of the deleted item to notify sync client
+	                        if (req.headers['origin'] !== cfg.webclient.address)
+	                            item.remove(next);
+	                        else
+	                            async.series([
+	                                function (done) {
+	                                    item.removeChildrens(done);
+	                                },
+	                                function (done) {
+	                                    item.removeDir(done);
+	                                }
+	                            ],
+	                            function (err) {
+	                                if (err) return next(err);
 
-                                    item.isRemoved = true;
-                                    item.getDirPath(function (err, oldPath) {
-                                        if (err) return next(err);
+	                                item.isRemoved = true;
+	                                item.getDirPath(function (err, oldPath) {
+	                                    if (err) return next(err);
 
-                                        item.meta.oldPath = oldPath;
-                                        item.parent = undefined;
-                                        item.markModified('meta');
-                                        
-                                        item.save(next);
-                                    });
-                                });
-                        });
-                },
-                // Item is shared,
-                // find the user relationship
-                function (next) {
-                    if (!item.isShared) return next();
+	                                    item.meta.oldPath = oldPath;
+	                                    item.parent = undefined;
+	                                    item.markModified('meta');
 
-                    ItemShare.getItemShare(item, function (err, ishare) {
-                        if (err || !ishare) return next(true);
+	                                    item.save(next);
+	                                });
+	                            });
+	                    });
+	            },
+	            // Item is shared,
+	            // find the user relationship
+	            function (next) {
+	                if (!item.isShared) return next();
 
-                        var membership = ishare.getMembership(user);
+	                ItemShare.getItemShare(item, function (err, ishare) {
+	                    if (err || !ishare) return next(true);
 
-                        if (ishare.item.toString() === item._id.toString()) {
-                            // Item is the root of the sharing
-                            // delete the sharing if owner else remove membership
-                            if (isOwner) {
-                                ishare.remove(function (err) {
-                                    if (err) return next(err);
-                                    item.remove(next);
-                                });
-                            } else if (membership) {
-                                ishare.removeMember(user);
-                                ishare.save(next);
-                            } else {
-                                next(true, 403);
-                            }
-                        } else {
-                            // Item is a child of a shared folder
-                            // delete if user has rw permissions
-                            if (isOwner || (membership && membership.permissions === 1)) {
-                                item.remove(next);
-                            } else {
-                                next(true, 403);
-                            }
-                        }
-                    });
-                }
-            ], function (err, codes) {
-                if (err) return res.send(codes[0] || 500);
-                res.send(200);
-            });
+	                    var membership = ishare.getMembership(user);
+
+	                    if (ishare.item.toString() === item._id.toString()) {
+	                        // Item is the root of the sharing
+	                        // delete the sharing if owner else remove membership
+	                        if (isOwner) {
+	                            ishare.remove(function (err) {
+	                                if (err) return next(err);
+	                                item.remove(next);
+	                            });
+	                        } else if (membership) {
+	                            ishare.removeMember(user);
+	                            ishare.save(next);
+	                        } else {
+	                            next(new Error('User has no rights on this item'), 403);
+	                        }
+	                    } else {
+	                        // Item is a child of a shared folder
+	                        // delete if user has rw permissions
+	                        if (isOwner || (membership && membership.permissions === 1)) {
+	                            item.remove(next);
+	                        } else {
+	                            next(new Error('User has no rights on this item'), 403);
+	                        }
+	                    }
+	                });
+	            }
+	        ], function (err, codes) {
+	            if (err) return res.send(codes[0] || 500);
+	            res.send(200);
+	        });
 		});
 	});
 

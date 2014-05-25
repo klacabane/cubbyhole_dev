@@ -104,9 +104,10 @@ itemSchema.methods.getDirPath = function (callback) {
             else return 1;
         });
 
-        ancestors.forEach(function (ancestor) {
-            fullPath = path.join(fullPath, ancestor.name);
-        });
+	    for (var i = 0, len = ancestors.length; i < len; i++) {
+		    fullPath = path.join(fullPath, ancestors[i].name);
+	    }
+
         callback(null, path.join(fullPath, that.name));
     });
 };
@@ -121,6 +122,7 @@ itemSchema.methods.duplicate = function (args, callback) {
     var that = this,
         parent = args.parent,
         owner = args.owner;
+
     this.model('Item').findOne({name: this.name, parent: parent, type: this.type, owner: owner}, function (err, existing) {
         if (err) return callback(err);
         var name = (existing) ? Utils.rename(that.name) : that.name;
@@ -280,8 +282,7 @@ itemSchema.statics.parentExists = function (id, cb) {
 	if (!id || !id.match(/^[0-9a-fA-F]{24}$/)) return cb(null, false);
 
 	this.findOne({_id: id}, function (err, item) {
-		if (err) return cb(err);
-		cb(null, item !== null);
+		cb(err, item !== null);
 	});
 };
 

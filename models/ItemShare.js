@@ -148,7 +148,7 @@ itemShareSchema.methods.getMembership = function (id) {
  * @returns @ItemShare
  */
 itemShareSchema.statics.getItemShare = function (item, callback) {
-    var that = this;
+    var self = this;
 
     this.findOne({item: item._id}, function (err, ishare) {
         if (err || ishare) return callback(err, ishare);
@@ -156,12 +156,12 @@ itemShareSchema.statics.getItemShare = function (item, callback) {
         item.getAncestors(function (err, ancestors) {
             if (err) return callback(err);
 
-            var fn = [];
-            ancestors.forEach(function (anc) {
-                fn.push(function (cb) {
-                    that.findOne({item: anc._id}, cb);
-                });
-            });
+	        for (var i = 0, fn = [], len = ancestors.length; i < len; i++) {
+		        var ancestor = ancestors[i];
+		        fn.push(function (next) {
+			        self.findOne({item: ancestor._id}, next);
+		        });
+	        }
 
             async.parallel(fn, function (err, results) {
                 callback(err, Utils.cleanArray(results)[0]);
