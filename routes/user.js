@@ -1,42 +1,42 @@
 var User = require('../models/User'),
-	Item = require('../models/Item'),
-	UserPlan = require('../models/UserPlan'),
-	Plan = require('../models/Plan'),
-	mw = require('../tools/middlewares'),
-	cache = require('../tools/cache'),
-	Utils = require('../tools/utils');
+    Item = require('../models/Item'),
+    UserPlan = require('../models/UserPlan'),
+    Plan = require('../models/Plan'),
+    mw = require('../tools/middlewares'),
+    cache = require('../tools/cache'),
+    Utils = require('../tools/utils');
 
 module.exports = function (app) {
-	/**
-	 *  GET
+    /**
+     *  GET
      *  Return user matching id param
-	 */
+     */
 	app.get('/user/:id', mw.checkAuth, mw.validateId, function (req, res) {
-		var query = {
-			_id: req.params.id,
-			isAdmin: {$exists: false},
-			deleted: false
-		};
+        var query = {
+            _id: req.params.id,
+            isAdmin: {$exists: false},
+            deleted: false
+        };
 
-		User.findOne(query, 'id email registrationDate currentPlan')
-			.populate('currentPlan')
-			.exec(function (err, user) {
-			    if (err) return res.send(500);
-			    if (!user) return res.send(404);
+        User.findOne(query, 'id email registrationDate currentPlan')
+            .populate('currentPlan')
+            .exec(function (err, user) {
+                if (err) return res.send(500);
+                if (!user) return res.send(404);
 
-			    var obj = user.format(),
-			        planId = user.currentPlan.plan;
+                var obj = user.format(),
+                planId = user.currentPlan.plan;
 
-			    obj.currentPlan.plan = cache.getPlan(planId);
-			    user.getPlanUsage(function (err, usage) {
-					if (err) return res.send(500);
+                obj.currentPlan.plan = cache.getPlan(planId);
+                user.getPlanUsage(function (err, usage) {
+                    if (err) return res.send(500);
 
-					obj.currentPlan.usage = usage;
-					res.send(200, {
-						data: obj
-					});
-			    });
-			});
+                    obj.currentPlan.usage = usage;
+                    res.send(200, {
+                        data: obj
+                    });
+                });
+            });
 	});
 
     /**
@@ -116,13 +116,13 @@ module.exports = function (app) {
                         hasMore = true;
                     }
 
-		            for (var i = 0, len = users.length; i < len; i++) {
-			            var userObj = users[i].format(),
-				            planId = users[i].currentPlan.plan;
+                    for (var i = 0, len = users.length; i < len; i++) {
+                        var userObj = users[i].format(),
+                            planId = users[i].currentPlan.plan;
 
-			            userObj.currentPlan.plan = cache.getPlan(planId);
-			            results.push(userObj);
-		            }
+                        userObj.currentPlan.plan = cache.getPlan(planId);
+                        results.push(userObj);
+                    }
 
                     res.send(200, {
                         data: results,

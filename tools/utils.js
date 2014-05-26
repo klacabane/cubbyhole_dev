@@ -1,42 +1,42 @@
-var	jwt = require('jwt-simple'),
-	cfg = require('../config'),
-	async = require('async'),
-	fs = require('fs'),
-	nodemailer = require('nodemailer'),
+var jwt = require('jwt-simple'),
+    cfg = require('../config'),
+    async = require('async'),
+    fs = require('fs'),
+    nodemailer = require('nodemailer'),
     path = require('path'),
-	Plan = require('../models/Plan'),
-	Bandwidth = require('../models/Bandwidth'),
+    Plan = require('../models/Plan'),
+    Bandwidth = require('../models/Bandwidth'),
     Cache = require('../tools/cache');
 
 var Utils = {
-	/*
-	 *  Token
-	 */
-	generateToken: function (user, remember) {
-		var duration = remember
+    /*
+     *  Token
+     */
+    generateToken: function (user, remember) {
+        var duration = remember
             ? cfg.token.expiration_long
             : cfg.token.expiration;
 
-		var token = jwt.encode({
-			id: user._id,
-			mail: user.mail,
-			exp: Date.now() + (86400000 * duration)
-		}, cfg.token.secret);
+        var token = jwt.encode({
+            id: user._id,
+            mail: user.mail,
+            exp: Date.now() + (86400000 * duration)
+        }, cfg.token.secret);
 
-		return token;
-	},
-	getTokenUser: function (token) {
-		return jwt.decode(token, cfg.token.secret).id;
-	},
-	isTokenValid: function (token) {
-		try {
-			var tkn = jwt.decode(token, cfg.token.secret);
-		} catch (err) {
-			return false;
-		}
+        return token;
+    },
+    getTokenUser: function (token) {
+        return jwt.decode(token, cfg.token.secret).id;
+    },
+    isTokenValid: function (token) {
+        try {
+            var tkn = jwt.decode(token, cfg.token.secret);
+        } catch (err) {
+            return false;
+        }
 
-		if (tkn.exp && tkn.exp < Date.now())
-			return false;
+        if (tkn.exp && tkn.exp < Date.now())
+            return false;
 
         if (tkn.isNonce)
             if (Cache.isBlacklisted(token))
@@ -44,30 +44,30 @@ var Utils = {
             else
                 Cache.blacklistToken(token);
 
-		return true;
-	},
-	/*
-	 *  File
-	 */
-	getFileMeta: function (file) {
+        return true;
+    },
+    /*
+     *  File
+     */
+    getFileMeta: function (file) {
         var ext = file.originalFilename.split('.').pop();
         var type = this._extensions.find(ext);
 
-		return {
-			tmp: file.path,
-			size: file.size,
-			type: type
-		};
-	},
-	rename: function (name) {
-		return name.substring(0, name.split('.')[0].length)
-			+ Date.now()
-			+ name.substring(name.split('.')[0].length, name.length);
-	},
+        return {
+            tmp: file.path,
+            size: file.size,
+            type: type
+        };
+    },
+    rename: function (name) {
+        return name.substring(0, name.split('.')[0].length)
+            + Date.now()
+            + name.substring(name.split('.')[0].length, name.length);
+    },
 	/* DB */
-	insertPlanAndBw: function (callback) {
-		fs.readFile('./datas/planAndBw.json', function (err, data) {
-			data = JSON.parse(data);
+    insertPlanAndBw: function (callback) {
+        fs.readFile('./datas/planAndBw.json', function (err, data) {
+            data = JSON.parse(data);
 
             Plan.removeAll(function (err) {
                 if (err) return callback(err);
@@ -95,10 +95,10 @@ var Utils = {
                         });
                     });
             });
-		});
+        });
 	},
-	/* Email */
-	sendEmail: function (recipient, details, callback) {
+    /* Email */
+    sendEmail: function (recipient, details, callback) {
         var recipient = recipient,
             details = details,
             callback = callback || details,
@@ -157,7 +157,7 @@ var Utils = {
             smtpTransport.close();
             callback();
         });
-	},
+    },
     _sortByName: function (a, b) {
         if (a.name.toUpperCase() < b.name.toUpperCase()) return -1;
         if (a.name.toUpperCase() > b.name.toUpperCase()) return 1;

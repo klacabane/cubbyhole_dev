@@ -8,17 +8,17 @@ var mongoose = require('mongoose'),
     User = require('../models/User');
 
 var itemSchema = new mongoose.Schema({
-    name: 		    String,
-    type: 		    String,
-    url: 		    String,
-    owner: 		    {type: mongoose.Schema.Types.ObjectId, ref: 'User'},
-    meta: 		    mongoose.Schema.Types.Mixed,                    // @type, @size
-    lastModified:   {type: Date, default: Date.now},
-    isRoot:         Boolean,
-    isCopy:         Boolean,
-    isShared:       Boolean,
-    isPublic:       Boolean,
-    isRemoved:      Boolean,
+    name:               String,
+    type:               String,
+    url:                String,
+    owner:{type:        mongoose.Schema.Types.ObjectId, ref: 'User'},
+    meta:               mongoose.Schema.Types.Mixed,                    // @type, @size
+    lastModified:       {type: Date, default: Date.now},
+    isRoot:             Boolean,
+    isCopy:             Boolean,
+    isShared:           Boolean,
+    isPublic:           Boolean,
+    isRemoved:          Boolean,
     link: {
         url:            String,
         creationDate:   Date,
@@ -37,9 +37,9 @@ itemSchema.plugin(tree);
 
 /** save */
 itemSchema.pre('save', function (next) {
-	var that = this;
+    var that = this;
 
-	if (!this.isNew || this.isCopy) return next();
+    if (!this.isNew || this.isCopy) return next();
 
     // new Item,
     // make dir or move file from tmp to user dir

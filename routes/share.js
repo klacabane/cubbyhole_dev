@@ -225,37 +225,37 @@ module.exports = function (app) {
         var itemId = req.params.id,
             member = req.params.member;
         ItemShare.findOne({item: itemId}, function (err, ishare) {
-                if (err) return res.send(500);
-                if (!ishare) return res.send(404);
+            if (err) return res.send(500);
+            if (!ishare) return res.send(404);
 
-                var user = req.user;
-                async.parallel([
-                    function (cb) {
-                        if (user !== ishare.owner._id.toString()) return cb();
+            var user = req.user;
+            async.parallel([
+                function (cb) {
+                    if (user !== ishare.owner._id.toString()) return cb();
 
-                        // User is the owner
-                        // if a member is given, only delete his membership
-                        if (member) {
-                            ishare.removeMember(member);
-                            ishare.save(cb);
-                        } else {
-                            ishare.remove(cb);
-                        }
-                    },
-                    function (cb) {
-                        if (!ishare.isMember(user)) return cb();
-
-                        // User is a member,
-                        // delete his membership
-                        ishare.removeMember(user);
+                    // User is the owner
+                    // if a member is given, only delete his membership
+                    if (member) {
+                        ishare.removeMember(member);
                         ishare.save(cb);
-
+                    } else {
+                        ishare.remove(cb);
                     }
-                ], function (err) {
-                    if (err) return res.send(500);
-                    res.send(200);
-                });
+                },
+                function (cb) {
+                    if (!ishare.isMember(user)) return cb();
+
+                    // User is a member,
+                    // delete his membership
+                    ishare.removeMember(user);
+                    ishare.save(cb);
+
+                }
+            ], function (err) {
+                if (err) return res.send(500);
+                res.send(200);
             });
+        });
     });
 
     /**

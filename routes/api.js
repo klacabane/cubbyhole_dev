@@ -1,10 +1,10 @@
 var User = require('../models/User'),
-	Utils = require('../tools/utils'),
-	Item = require('../models/Item'),
-	ItemShare = require('../models/ItemShare'),
-	mw = require('../tools/middlewares'),
-	cfg = require('../config.js'),
-	geoip = require('geoip');
+    Utils = require('../tools/utils'),
+    Item = require('../models/Item'),
+    ItemShare = require('../models/ItemShare'),
+    mw = require('../tools/middlewares'),
+    cfg = require('../config.js'),
+    geoip = require('geoip');
 
 module.exports = function (app) {
     require('../routes/user')(app);
@@ -25,33 +25,33 @@ module.exports = function (app) {
      *  401: email is not verified
      */
     app.post('/auth/signin', function (req, res) {
-	    var email = req.body.email,
-			pw = req.body.pass,
-			rememberMe = req.body.rememberMe;
+        var email = req.body.email,
+            pw = req.body.pass,
+            rememberMe = req.body.rememberMe;
 
-		if (!email || !pw) return res.send(400);
+        if (!email || !pw) return res.send(400);
 
-		User.findOne({email: email.toLowerCase().trim(), deleted: false}, function (err, user) {
-			if (err) return res.send(500);
-			if (!user) return res.send(404);
-			if (!user.isAllowed) return res.send(403);
+        User.findOne({email: email.toLowerCase().trim(), deleted: false}, function (err, user) {
+            if (err) return res.send(500);
+            if (!user) return res.send(404);
+            if (!user.isAllowed) return res.send(403);
 
-			user.comparePw(pw, function (err, match) {
-				if (err) return res.send(500);
-				if (!match) return res.send(404);
-				if (!user.verified) return res.send(401);
+            user.comparePw(pw, function (err, match) {
+                if (err) return res.send(500);
+                if (!match) return res.send(404);
+                if (!user.verified) return res.send(401);
 
-				var t = Utils.generateToken(user, rememberMe);
-				res.send(200, {
-					profile: {
-						id: user._id,
-						email: user.email,
-						plan: user.currentPlan,
-						token: t
-					}
-				});
-			});
-		});
+                var tkn = Utils.generateToken(user, rememberMe);
+                res.send(200, {
+                    profile: {
+                        id: user._id,
+                        email: user.email,
+                        plan: user.currentPlan,
+                        token: tkn
+                    }
+                });
+            });
+        });
     });
 
     /**
@@ -61,28 +61,28 @@ module.exports = function (app) {
      *  422: email already taken
      */
     app.post('/auth/signup', function (req, res) {
-		var email = req.body.email,
-			pw = req.body.pass,
-			ip = req.body.ip;
+        var email = req.body.email,
+            pw = req.body.pass,
+            ip = req.body.ip;
 
-		if (!email || !pw) return res.send(400);
+        if (!email || !pw) return res.send(400);
 
-		User.findOne({email: email.toLowerCase().trim(), deleted: false}, function (err, user) {
-			if (err) return res.send(500);
-			if (user) return res.send(422);
+        User.findOne({email: email.toLowerCase().trim(), deleted: false}, function (err, user) {
+            if (err) return res.send(500);
+            if (user) return res.send(422);
 
-			var location = city.lookupSync(ip);
-			new User({email: email, password: pw, verified: true /* school blocking proxy */, location: location})
-				.save(function (err, u) {
-					if (err) return res.send(500);
+            var location = city.lookupSync(ip);
+            new User({email: email, password: pw, verified: true /* school blocking proxy */, location: location})
+                .save(function (err, u) {
+                    if (err) return res.send(500);
 
-					Utils.sendEmail(u, function (err) {
-						if (err) console.log(err);
-					});
+                    Utils.sendEmail(u, function (err) {
+                        if (err) console.log(err);
+                    });
 
-					res.send(201);
-				});
-		});
+                    res.send(201);
+                });
+        });
     });
 
     /**
@@ -94,8 +94,8 @@ module.exports = function (app) {
     	if (!user) return res.render('index', {locals: {error: 'Invalid token.'}});
 
     	User.findOneAndUpdate({_id: user}, {$set: {verified: true}}, function (err, user) {
-			if (err) return res.render('index', {locals: {error: 'Something went wrong.'}});
-			res.redirect(cfg.webclient.address + '/index.html?email=' + user.email);
+            if (err) return res.render('index', {locals: {error: 'Something went wrong.'}});
+            res.redirect(cfg.webclient.address + '/index.html?email=' + user.email);
     	});
     });
 
