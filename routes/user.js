@@ -138,15 +138,23 @@ module.exports = function (app) {
      *  Update user password
      */
     app.put('/user/password/:token?', mw.checkAuth, function (req, res) {
-        User.findOne({_id: req.user}, function (err, user) {
+        User.findOne({_id: req.user, deleted: false}, function (err, user) {
             if (err) return res.send(500);
             if (!user) return res.send(404);
 
-            user.password = req.body.password;
+            user.password = req.body.pass;
             user.save(function (err) {
                 if (err) return res.send(500);
 
-                res.send(200);
+                var tkn = Utils.generateToken(user, true);
+                res.send(200, {
+                    profile: {
+                        id: user._id,
+                        email: user.email,
+                        plan: user.currentPlan,
+                        token: tkn
+                    }
+                });
             });
         });
     });
