@@ -8,11 +8,11 @@ var mongoose = require('mongoose'),
     User = require('../models/User');
 
 var itemSchema = new mongoose.Schema({
-	name: 		    String,
-	type: 		    String,
-	url: 		    String,
-	owner: 		    {type: mongoose.Schema.Types.ObjectId, ref: 'User'},
-	meta: 		    mongoose.Schema.Types.Mixed,                    // @type, @size
+    name: 		    String,
+    type: 		    String,
+    url: 		    String,
+    owner: 		    {type: mongoose.Schema.Types.ObjectId, ref: 'User'},
+    meta: 		    mongoose.Schema.Types.Mixed,                    // @type, @size
     lastModified:   {type: Date, default: Date.now},
     isRoot:         Boolean,
     isCopy:         Boolean,
@@ -279,11 +279,11 @@ itemSchema.methods.formatWithSize = function (callback) {
  *	Statics
  */
 itemSchema.statics.parentExists = function (id, cb) {
-	if (!id || !id.match(/^[0-9a-fA-F]{24}$/)) return cb(null, false);
+    if (!id || !id.match(/^[0-9a-fA-F]{24}$/)) return cb(null, false);
 
-	this.findOne({_id: id}, function (err, item) {
-		cb(err, item !== null);
-	});
+    this.findOne({_id: id}, function (err, item) {
+        cb(err, item !== null);
+    });
 };
 
 module.exports = mongoose.model('Item', itemSchema);

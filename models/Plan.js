@@ -2,12 +2,12 @@ var mongoose = require('mongoose'),
 	Bandwidth = require('../models/Bandwidth');
 
 var planSchema = new mongoose.Schema({
-	name : String,
-	price : Number,
-	duration : Number,
-	storage : Number,
-	sharedQuota : Number,
-	bandwidth : { type: mongoose.Schema.Types.ObjectId, ref: 'Bandwidth' },
+    name : String,
+    price : Number,
+    duration : Number,
+    storage : Number,
+    sharedQuota : Number,
+    bandwidth : { type: mongoose.Schema.Types.ObjectId, ref: 'Bandwidth' },
     isMutable: {type: Boolean, default: true}
 });
 
@@ -20,9 +20,9 @@ var planSchema = new mongoose.Schema({
  * @param callback
  */
 planSchema.statics.removeAll = function (callback) {
-	this.model('Plan').remove({}, function (err) {
-		Bandwidth.remove({}, callback);
-	 });
+    this.model('Plan').remove({}, function (err) {
+        Bandwidth.remove({}, callback);
+    });
 };
 
 

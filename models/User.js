@@ -1,19 +1,19 @@
 var mongoose = require('mongoose'),
     Plan = require('../models/Plan'),
-	UserPlan = require('../models/UserPlan'),
+    UserPlan = require('../models/UserPlan'),
     Item = require('../models/Item'),
     ItemShare = require('../models/ItemShare'),
     DailyTransfer = require('../models/UserDailyTransfer'),
-	async = require('async'),
-	bcrypt = require('bcrypt'),
+    async = require('async'),
+    bcrypt = require('bcrypt'),
     Utils = require('../tools/utils');
 
 var userSchema = new mongoose.Schema({
-	email: {type: String, lowercase: true, trim: true},
-	password: String,
-	registrationDate: { type: Date, default: Date.now },
-	currentPlan: { type: mongoose.Schema.Types.ObjectId, ref: 'UserPlan' },
-	verified: {type: Boolean, default: false},
+    email: {type: String, lowercase: true, trim: true},
+    password: String,
+    registrationDate: { type: Date, default: Date.now },
+    currentPlan: { type: mongoose.Schema.Types.ObjectId, ref: 'UserPlan' },
+    verified: {type: Boolean, default: false},
     deleted: {type: Boolean, default: false},
     isAdmin: Boolean,
     isAllowed: {type: Boolean, default: true},
@@ -55,7 +55,8 @@ userSchema.pre('save', function (next) {
             function (cb) {
                 new Item({isRoot: true, name: that._id, type: 'folder', owner: that._id})
                     .save(cb);
-            }], next);
+            }],
+            next);
     }
 });
 
