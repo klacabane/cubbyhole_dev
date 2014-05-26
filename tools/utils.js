@@ -147,7 +147,7 @@ var Utils = {
 
                 options.subject = 'Cubbyhole password reset';
                 options.html = 'If you didn\'t request a password reset, please ignore this email. ';
-                options.html += "<a href='" + cfg.webclient.address + "/resetPassword/" + token + "'>Reset your password</a>";
+                options.html += "<a href='" + cfg.webclient.address + "/?resetPassword=" + token + "'>Reset your password</a>";
             }
         }
 
