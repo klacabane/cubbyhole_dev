@@ -229,7 +229,7 @@ module.exports = function (app) {
                         });
                     }],
                     function (err, result) {
-                        if (err) return res.send(500);
+                        if (err) return res.send(result || 500);
 
                         res.send(200, {
                             data: result

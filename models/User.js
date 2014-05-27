@@ -205,7 +205,7 @@ userSchema.methods.comparePw = function (pw, callback) {
 userSchema.statics.hasPermissions = function (args, callback) {
     var user = args.user,
         item = args.item,
-        owner = item.owner.hasOwnProperty("email") ? item.owner._id.toString() : item.owner.toString(),
+        owner = item.owner._id ? item.owner._id.toString() : item.owner.toString(),
         permissions = args.permissions || 0;
 
     if (user === owner)
