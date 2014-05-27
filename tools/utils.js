@@ -230,9 +230,9 @@ var Utils = {
 
             if (child.type === 'folder') {
                 if (child.isShared)
-                    results.push(child._id)
+                    results.push(child._id);
                 else
-                   results = results.concat(Utils.getSharedChilds(child.children));
+                    results = results.concat(Utils.getSharedChilds(child.children));
             }
         }
         return results;

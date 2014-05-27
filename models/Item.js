@@ -11,7 +11,7 @@ var itemSchema = new mongoose.Schema({
     name:               String,
     type:               String,
     url:                String,
-    owner:{type:        mongoose.Schema.Types.ObjectId, ref: 'User'},
+    owner:              {type: mongoose.Schema.Types.ObjectId, ref: 'User'},
     meta:               mongoose.Schema.Types.Mixed,                    // @type, @size
     lastModified:       {type: Date, default: Date.now},
     isRoot:             Boolean,
@@ -125,7 +125,9 @@ itemSchema.methods.duplicate = function (args, callback) {
 
     this.model('Item').findOne({name: this.name, parent: parent, type: this.type, owner: owner}, function (err, existing) {
         if (err) return callback(err);
-        var name = (existing) ? Utils.rename(that.name) : that.name;
+        var name = existing
+            ? Utils.rename(that.name)
+            : that.name;
 
         new that.constructor({
             name: name,
@@ -181,9 +183,9 @@ itemSchema.methods.setShared = function (value, callback) {
 
         async.each(
             childrens,
-            function (child, cb) {
+            function (child, next) {
                 child.isShared = value;
-                child.save(cb);
+                child.save(next);
             },
             function (err) {
                 if (err) return callback(err);
@@ -221,16 +223,18 @@ itemSchema.methods.getSize = function (callback) {
         fs.stat(dirPath, function (err, stats) {
             if (err) return callback(err);
 
-            var total = stats.isDirectory() ? 0 : stats.size;
+            var total = stats.isDirectory()
+                ? 0
+                : stats.size;
             that.getChildren(function (err, childrens) {
                 if (err) return callback(err);
 
                 async.each(
                     childrens,
-                    function (child, cb) {
+                    function (child, next) {
                         child.getSize(function (err, size) {
                             total += size;
-                            cb(err);
+                            next(err);
                         });
                     },
                 function (err) {
@@ -259,12 +263,12 @@ itemSchema.methods.formatWithSize = function (callback) {
 
             async.each(
                 childrens,
-                function (child, cb) {
+                function (child, next) {
                     child.formatWithSize(function (err, childObj) {
-                        if (err) return cb(err);
+                        if (err) return next(err);
 
                         formattedChilds.push(childObj);
-                        cb();
+                        next();
                     });
                 },
             function (err) {
