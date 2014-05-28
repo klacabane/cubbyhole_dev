@@ -28,12 +28,12 @@ module.exports = function (app) {
 
                         var fn = [];
                         // Validate receivers
-                        receivers.forEach(function (r) {
+                        receivers.forEach(function (receiver) {
                             fn.push(function (cb) {
-                                User.findOne({email: r.email.toLowerCase().trim(), deleted: false})
+                                User.findOne({email: receiver.email.toLowerCase().trim(), deleted: false})
                                     .lean()
                                     .exec(function (err, u) {
-                                        if (err || !u || u._id == from || !u.verified) return cb(err);
+                                        if (err || !u || u._id.toString() === from || !u.verified) return cb(err);
                                         if (ishare && (u._id === ishare.owner._id
                                             || ishare.isMember(u._id))) return cb(); // Membership already exists
 
@@ -46,7 +46,7 @@ module.exports = function (app) {
                                                 _id: u._id,
                                                 email: u.email,
                                                 accepted: false,
-                                                permissions: r.permissions,
+                                                permissions: receiver.permissions,
                                                 custom: {
                                                     parent: rootFolder._id
                                                 }

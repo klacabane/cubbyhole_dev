@@ -45,7 +45,7 @@ module.exports = function (app) {
      */
     app.get('/user/email/:email', mw.checkAuth, function (req, res) {
         var query = {
-            _id: req.params.id,
+            email: req.params.email,
             isAdmin: {$exists: false},
             deleted: false
         };
