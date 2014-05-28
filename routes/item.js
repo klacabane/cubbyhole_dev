@@ -293,7 +293,7 @@ module.exports = function (app) {
         function (err, results) {
             if (err) return res.send(500);
 
-            for (var i = 0, len = results.shares; i < len; i++) {
+            for (var i = 0, len = results.shares.length; i < len; i++) {
                 var sh = results.shares[i];
                 Utils.insertAtParentPath([results.root], sh);
             }
