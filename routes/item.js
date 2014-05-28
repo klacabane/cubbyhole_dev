@@ -83,7 +83,7 @@ module.exports = function (app) {
                                 function (file, callback) {
                                     itemArgs.name = file.originalFilename;
                                     owner.getStorageUsage(function (err, usedStorage) {
-                                        if (Utils.bytesToMb(usedStorage + (totalUpload + file.size)) > /*cache.getPlan(ownerPlan.plan).storage*/ 10000000)
+                                        if (Utils.bytesToMb(usedStorage + (totalUpload + file.size)) > cache.getPlan(ownerPlan.plan).storage)
                                             return callback();
 
                                         totalUpload += file.size;
@@ -101,12 +101,16 @@ module.exports = function (app) {
                                 function (err) {
                                     if (err) return next(err);
 
-                                    var query = {
-                                        $inc: {
-                                            'usage.bandwidth.upload': totalUpload,
-                                            'usage.storage': totalUpload
-                                        }};
-                                    UserPlan.findByIdAndUpdate(user.currentPlan._id, query, next);
+                                    if (totalUpload > 0) {
+                                        var query = {
+                                            $inc: {
+                                                'usage.bandwidth.upload': totalUpload,
+                                                'usage.storage': totalUpload
+                                            }};
+                                        UserPlan.findByIdAndUpdate(user.currentPlan._id, query, next);
+                                    } else {
+                                        next();
+                                    }
                                 });
                         }
                     }],
@@ -260,9 +264,9 @@ module.exports = function (app) {
                     .exec(function (err, shares) {
                         if (err) return next(err);
 
-                        for (var i = 0, fn = [], len = shares.length; i < len; i++) {
-                            var share = shares[i],
-                                membership = share.getMembership(userId);
+                        var fn = [];
+                        shares.forEach(function (share) {
+                            var membership = share.getMembership(userId);
 
                             if (membership.accepted)
                                 fn.push(function (done) {
@@ -278,7 +282,7 @@ module.exports = function (app) {
                                             done(null, itemObj);
                                         });
                                 });
-                        }
+                        });
 
                         async.parallel(fn, next);
                     });

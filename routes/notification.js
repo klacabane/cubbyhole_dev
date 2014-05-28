@@ -11,9 +11,10 @@ module.exports = function (app) {
         Notification.find({user: userId}, function (err, notes) {
             if (err) return res.send(500);
 
-            notes.forEach(function (note) {
+            for (var i = 0, len = notes.length; i < len; i++) {
+                var note = notes[i];
                 note.createMessage();
-            });
+            }
 
             res.send(200, {
                 data: notes
