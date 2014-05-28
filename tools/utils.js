@@ -284,6 +284,9 @@ var Utils = {
         }
 
         return lookup[id] !== undefined;
+    },
+    isValidString: function (s) {
+        return (typeof s === 'string' && s.trim());
     }
 };
 

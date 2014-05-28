@@ -1,4 +1,5 @@
-var User = require('../models/User'),
+var async = require('async'),
+    User = require('../models/User'),
     Utils = require('../tools/utils'),
     Item = require('../models/Item'),
     ItemShare = require('../models/ItemShare'),
@@ -29,7 +30,7 @@ module.exports = function (app) {
             pw = req.body.pass,
             rememberMe = req.body.rememberMe;
 
-        if (!email || !pw) return res.send(400);
+        if (!Utils.isValidString(email) || !Utils.isValidString(pw)) return res.send(400);
 
         User.findOne({email: email.toLowerCase().trim(), deleted: false}, function (err, user) {
             if (err) return res.send(500);
@@ -65,18 +66,27 @@ module.exports = function (app) {
             pw = req.body.pass,
             ip = req.body.ip;
 
-        if (!email || !pw) return res.send(400);
+        if (!Utils.isValidString(email) || !Utils.isValidString(pw)) return res.send(400);
 
-        User.findOne({email: email.toLowerCase().trim(), deleted: false}, function (err, user) {
+        async.parallel({
+            location: function (next) {
+                city.lookup(ip, function (err, locData) {
+                    next(null, locData);
+                });
+            },
+            emailTaken: function (next) {
+                User.findOne({email: email.toLowerCase().trim(), deleted: false}, next);
+            }
+        }, function (err, result) {
             if (err) return res.send(500);
-            if (user) return res.send(422);
+            if (result.emailTaken) return res.send(422);
 
-            var location = city.lookupSync(ip);
-            new User({email: email, password: pw, verified: true /* school blocking proxy */, location: location})
-                .save(function (err, u) {
+            var location = result.location || {};
+            new User({email: email, password: pw, verified: false, location: location})
+                .save(function (err, newUser) {
                     if (err) return res.send(500);
 
-                    Utils.sendEmail(u, function (err) {
+                    Utils.sendEmail(newUser, function (err) {
                         if (err) console.log(err);
                     });
 

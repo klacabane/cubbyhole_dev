@@ -198,7 +198,7 @@ userSchema.methods.comparePw = function (pw, callback) {
 
 /**
  * hasPermissions
- * @param args  @Object {user: id, item: Item, [permissions: @1]}
+ * @param args  @Object {user: id, item: Item [, permissions: @1]}
  * @param callback
  * @returns @bool
  */
