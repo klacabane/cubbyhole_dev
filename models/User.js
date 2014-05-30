@@ -11,8 +11,9 @@ var mongoose = require('mongoose'),
 var userSchema = new mongoose.Schema({
     email: {type: String, lowercase: true, trim: true},
     password: String,
-    registrationDate: { type: Date, default: Date.now },
-    currentPlan: { type: mongoose.Schema.Types.ObjectId, ref: 'UserPlan' },
+    registrationDate: {type: Date, default: Date.now},
+    lastBillingDate: {type: Date},
+    currentPlan: {type: mongoose.Schema.Types.ObjectId, ref: 'UserPlan'},
     verified: {type: Boolean, default: false},
     deleted: {type: Boolean, default: false},
     isAdmin: Boolean,
@@ -44,6 +45,7 @@ userSchema.pre('save', function (next) {
                     UserPlan.create({user: that._id, plan: plan._id, isFree: true}, function (err, userPlan) {
                         if (userPlan) {
                             that.currentPlan = userPlan._id;
+                            that.lastBillingDate = userPlan.billingDate;
                         }
                         cb(err);
                     });
@@ -164,6 +166,8 @@ userSchema.methods.updatePlan = function (plan, callback) {
     }, function (err, results) {
         if (err) return callback(err);
         that.currentPlan = results.newPlan._id;
+        that.lastBillingDate = results.newPlan.billingDate;
+
         that.save(callback);
     });
 };
