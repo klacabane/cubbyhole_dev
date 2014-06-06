@@ -24,6 +24,26 @@ Open the mongod console and let it open and running
 Git bash on the projet folder
 
 	node app.js
+	
+# Adding Fixtures
+
+Open app.js and uncomment lines 47 to 52:
+
+	/** Uncomment to populate db with new Plans & Bws */
+    	/*
+	Utils.insertPlanAndBw(function (err) {
+		if (err) throw err;
+	});
+	*/
+
+Launch the API (see Getting Started above)
+
+Stop the API.
+
+
+Re-open app.js and comment lines 47 to 52
+
+Re-launch the API. Fixtures are added.
 
 # Changing IP Addresses
 
