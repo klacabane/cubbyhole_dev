@@ -5,6 +5,7 @@ var async = require('async'),
     ItemShare = require('../models/ItemShare'),
     mw = require('../tools/middlewares'),
     cfg = require('../config.js'),
+    cache = require('../tools/cache'),
     geoip = require('geoip');
 
 module.exports = function (app) {
@@ -134,4 +135,11 @@ module.exports = function (app) {
             });
     });
 
+    /**
+     *  GET
+     *  Returns api documentation
+     */
+    app.get('/documentation', mw.checkAuth, function (req, res) {
+        res.send(200, cache.store.ApiDocumentation);
+    });
 };

@@ -1,4 +1,5 @@
-var Utils = require('../tools/utils'),
+var fs = require('fs'),
+    Utils = require('../tools/utils'),
     Plan = require('../models/Plan'),
     Bandwidth = require('../models/Bandwidth');
 
@@ -6,6 +7,7 @@ var Cache = {
     store: {
         Plans: [],
         Bandwidths: [],
+        ApiDocumentation: null,
         _plans: {},
         _bandwidths: {},
         _tokenBlacklist: []
@@ -22,9 +24,17 @@ var Cache = {
                 Plan.find({}, 'bandwidth name price duration storage sharedQuota isMutable')
                     .exec(function (err, plans) {
                         Cache._addPlans(plans);
-                        if (callback) callback();
+                        if (callback) callback(err);
                     });
             });
+    },
+    addDocumentation: function (callback) {
+        fs.readFile('./routes/endpoints.json', 'utf-8', function (err, endpoints) {
+            if (endpoints)
+                Cache.store.ApiDocumentation = JSON.parse(endpoints);
+
+            if (callback) callback(err);
+        });
     },
     _addPlans: function (plans) {
         for (var i = 0, length = plans.length; i < length; i ++) {

@@ -1,0 +1,550 @@
+{
+  "data": [
+    {
+      "name": "/item",
+      "methods": [
+        {
+          "MethodName": "Get all items",
+          "Synopsis": "Returns all authenticated user item",
+          "HTTPMethod": "GET",
+          "URI": "/item",
+          "RequiresOAuth": "Y"
+        },
+        {
+          "MethodName": "Add item",
+          "Synopsis": "Uploads files or creates a folder in the authenticated user's storage",
+          "HTTPMethod": "POST",
+          "URI": "/item",
+          "RequiresOAuth": "Y",
+          "parameters": [
+            {
+              "Name": "parent",
+              "Description": "ID of the parent",
+              "Required": "Y",
+              "Type": "ObjectId"
+            },
+            {
+              "Name": "name",
+              "Description": "Name of the folder\nRequired only for folders",
+              "Type": "string"
+            },
+            {
+              "Name": "files",
+              "Description": "File(s) to upload",
+              "Required": "N",
+              "Type": "-F"
+            }
+          ]
+        },
+        {
+          "MethodName": "Duplicate item",
+          "Synopsis": "Duplicates the given item in the given parent",
+          "HTTPMethod": "POST",
+          "URI": "/item/{id}",
+          "RequiresOAuth": "Y",
+          "parameters": [
+            {
+              "Name": "id",
+              "Description": "ID of item to duplicate",
+              "Required": "Y",
+              "Type": "ObjectId"
+            },
+            {
+              "Name": "parent",
+              "Description": "ID of parent",
+              "Required": "Y",
+              "Type": "ObjectId"
+            }
+          ]
+        },
+        {
+          "MethodName": "Get item",
+          "Synopsis": "Returns an item based on id",
+          "HTTPMethod": "GET",
+          "URI": "/item/{id}",
+          "RequiresOAuth": "Y",
+          "parameters": [
+            {
+              "Name": "id",
+              "Description": "ID of the item to return",
+              "Required": "Y",
+              "Type": "ObjectId"
+            }
+          ]
+        },
+        {
+          "MethodName": "Download item",
+          "Synopsis": "Downloads an item based on id",
+          "HTTPMethod": "GET",
+          "URI": "/item/{id}/download",
+          "RequiresOAuth": "N",
+          "parameters": [
+            {
+              "Name": "id",
+              "Description": "ID of the item to download",
+              "Required": "Y",
+              "Type": "ObjectId"
+            },
+            {
+              "Name": "token",
+              "Description": "Authentication token, not needed for public items",
+              "Required": "N",
+              "Type": "X-Cub-AuthToken"
+            }
+          ]
+        },
+        {
+          "MethodName": "Delete item",
+          "Synopsis": "Deletes an item based on id",
+          "HTTPMethod": "DELETE",
+          "URI": "/item/{id}",
+          "RequiresOAuth": "Y",
+          "parameters": [
+            {
+              "Name": "id",
+              "Description": "ID of the item to delete",
+              "Required": "Y",
+              "Type": "ObjectId"
+            }
+          ]
+        },
+        {
+          "MethodName": "Update item",
+          "Synopsis": "Updates item's parent or name based on given parameter",
+          "HTTPMethod": "PUT",
+          "URI": "/item/{id}",
+          "RequiresOAuth": "Y",
+          "parameters": [
+            {
+              "Name": "id",
+              "Description": "ID of the item to update",
+              "Required": "Y",
+              "Type": "ObjectId"
+            },
+            {
+              "Name": "name",
+              "Description": "New item's name",
+              "Required": "N",
+              "Type": "string"
+            },
+            {
+              "Name": "parent",
+              "Description": "New item's parent",
+              "Required": "N",
+              "Type": "ObjectId"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "/user",
+      "methods": [
+        {
+          "MethodName": "Get user by id",
+          "Synopsis": "Returns an user based on id",
+          "HTTPMethod": "GET",
+          "URI": "/user/{id}",
+          "RequiresOAuth": "Y",
+          "parameters": [
+            {
+              "Name": "id",
+              "Description": "ID of the user",
+              "Required": "Y",
+              "Type": "ObjectId"
+            }
+          ]
+        },
+        {
+          "MethodName": "Get user by email",
+          "Synopsis": "Returns an user based on email",
+          "HTTPMethod": "GET",
+          "URI": "/user/email/{email}",
+          "RequiresOAuth": "Y",
+          "parameters": [
+            {
+              "Name": "email",
+              "Description": "Email of the user",
+              "Required": "Y",
+              "Type": "string"
+            }
+          ]
+        },
+        {
+          "MethodName": "Password reset request",
+          "Synopsis": "Request a password reset for the given email address and sends an email to this address",
+          "HTTPMethod": "GET",
+          "URI": "/user/{email}/password",
+          "RequiresOAuth": "Y",
+          "parameters": [
+            {
+              "Name": "email",
+              "Description": "Email of the user",
+              "Required": "Y",
+              "Type": "string"
+            }
+          ]
+        },
+        {
+          "MethodName": "Get all users with pagination",
+          "Synopsis": "Returns all users between start and limit parameters",
+          "HTTPMethod": "GET",
+          "URI": "/user/{start}/{limit}",
+          "RequiresOAuth": "Y",
+          "parameters": [
+            {
+              "Name": "start",
+              "Description": "Start index",
+              "Required": "Y",
+              "Type": "int"
+            },
+            {
+              "Name": "limit",
+              "Description": "Maximum number of results",
+              "Required": "Y",
+              "Type": "int"
+            }
+          ]
+        },
+        {
+          "MethodName": "Update password",
+          "Synopsis": "Updates user password",
+          "HTTPMethod": "PUT",
+          "URI": "/user/password/{token}",
+          "RequiresOAuth": "Y",
+          "parameters": [
+            {
+              "Name": "token",
+              "Description": "Token received in the password reset request",
+              "Required": "Y",
+              "Type": "Token"
+            },
+            {
+              "Name": "pass",
+              "Description": "New password",
+              "Required": "Y",
+              "Type": "string"
+            }
+          ]
+        },
+        {
+          "MethodName": "Update user",
+          "Synopsis": "Disable/Enable user account",
+          "HTTPMethod": "PUT",
+          "URI": "/user/{id}",
+          "RequiresOAuth": "Y",
+          "parameters": [
+            {
+              "Name": "id",
+              "Description": "ID of the user",
+              "Required": "Y",
+              "Type": "ObjectId"
+            },
+            {
+              "Name": "isAllowed",
+              "Description": "0 -> disable or 1 -> enable",
+              "Required": "Y",
+              "Type": "int"
+            }
+          ]
+        },
+        {
+          "MethodName": "Delete user",
+          "Synopsis": "Deletes authenticated user account",
+          "HTTPMethod": "DELETE",
+          "URI": "/user",
+          "RequiresOAuth": "Y"
+        }
+      ]
+    },
+    {
+      "name": "/auth",
+      "methods": [
+        {
+          "MethodName": "Signin",
+          "Synopsis": "Returns user profile with auth token",
+          "HTTPMethod": "POST",
+          "URI": "/auth/signin",
+          "RequiresOAuth": "N",
+          "parameters": [
+            {
+              "Name": "email",
+              "Description": "Email of the user",
+              "Required": "Y",
+              "Type": "string"
+            },
+            {
+              "Name": "pass",
+              "Description": "Password of the user",
+              "Required": "Y",
+              "Type": "string"
+            },
+            {
+              "Name": "rememberMe",
+              "Description": "Duration of the auth token",
+              "Required": "N",
+              "Type": "boolean"
+            }
+          ]
+        },
+        {
+          "MethodName": "Signup",
+          "Synopsis": "Registers an account",
+          "HTTPMethod": "POST",
+          "URI": "/auth/signup",
+          "RequiresOAuth": "N",
+          "parameters": [
+            {
+              "Name": "email",
+              "Description": "Email of the user",
+              "Required": "Y",
+              "Type": "string"
+            },
+            {
+              "Name": "pass",
+              "Description": "Password of the user",
+              "Required": "Y",
+              "Type": "string"
+            },
+            {
+              "Name": "ip",
+              "Description": "ip address of the user",
+              "Required": "N",
+              "Type": "ipv4"
+            }
+          ]
+        },
+        {
+          "MethodName": "Email confirmation",
+          "Synopsis": "Confirms an email address",
+          "HTTPMethod": "GET",
+          "URI": "/auth/confirm/{token}",
+          "RequiresOAuth": "N",
+          "parameters": [
+            {
+              "Name": "token",
+              "Description": "Token given in the confirmation email after the registration",
+              "Required": "Y",
+              "Type": "token"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "/plan",
+      "methods": [
+        {
+          "MethodName": "Add plan",
+          "Synopsis": "Creates a new plan",
+          "HTTPMethod": "POST",
+          "URI": "/plan",
+          "RequiresOAuth": "Y",
+          "parameters": [
+            {
+              "Name": "plan",
+              "Description": "Plan object to be added",
+              "Required": "Y",
+              "Type": "Plan Object {name: string, price: number, duration: number, storage: number, sharedQuota: number, bandwidth: ObjectId (ref to bw object), isMutable: boolean}"
+            }
+          ]
+        },
+        {
+          "MethodName": "Get plan",
+          "Synopsis": "Returns an plan based on id",
+          "HTTPMethod": "GET",
+          "URI": "/plan/{id}",
+          "RequiresOAuth": "Y",
+          "parameters": [
+            {
+              "Name": "id",
+              "Description": "ID of the plan",
+              "Required": "Y",
+              "Type": "ObjectId"
+            }
+          ]
+        },
+        {
+          "MethodName": "Update plan",
+          "Synopsis": "Updates a plan",
+          "HTTPMethod": "PUT",
+          "URI": "/plan/{id}",
+          "RequiresOAuth": "Y",
+          "parameters": [
+            {
+              "Name": "id",
+              "Description": "ID of the plan to update",
+              "Required": "Y",
+              "Type": "ObjectId"
+            },
+            {
+              "Name": "plan",
+              "Description": "Plan object with updated properties",
+              "Required": "Y",
+              "Type": "Plan Object {name: string, price: number, duration: number, storage: number, sharedQuota: number, bandwidth: ObjectId (ref to bw object), isMutable: boolean}"
+            }
+          ]
+        },
+        {
+          "MethodName": "Delete plan",
+          "Synopsis": "Deletes a plan",
+          "HTTPMethod": "DELETE",
+          "URI": "/plan/{id}",
+          "RequiresOAuth": "Y",
+          "parameters": [
+            {
+              "Name": "id",
+              "Description": "ID of the plan to delete",
+              "Required": "Y",
+              "Type": "ObjectId"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "/share",
+      "methods": [
+        {
+          "MethodName": "Share item",
+          "Synopsis": "Shares an item",
+          "HTTPMethod": "POST",
+          "URI": "/share",
+          "RequiresOAuth": "Y",
+          "parameters": [
+            {
+              "Name": "id",
+              "Description": "ID of the item to share",
+              "Required": "Y",
+              "Type": "ObjectId"
+            },
+            {
+              "Name": "with",
+              "Description": "People to share the item with",
+              "Required": "Y",
+              "Type": "Array of people object [{email: string, permissions: 0 (RO) or 1 (RW)}]"
+            }
+          ]
+        },
+        {
+          "MethodName": "Get all shares",
+          "Synopsis": "Returns all shares of authenticated user",
+          "HTTPMethod": "GET",
+          "URI": "/share",
+          "RequiresOAuth": "Y"
+        },
+        {
+          "MethodName": "Delete share",
+          "Synopsis": "Pass a shared item to private if no member is given, else deletes his membership",
+          "HTTPMethod": "DELETE",
+          "URI": "/share/{id}/{member}",
+          "RequiresOAuth": "Y",
+          "parameters": [
+            {
+              "Name": "id",
+              "Description": "ID of the shared item",
+              "Required": "Y",
+              "Type": "ObjectId"
+            },
+            {
+              "Name": "member",
+              "Description": "Member to remove from the sharing",
+              "Required": "N",
+              "Type": "ObjectId"
+            }
+          ]
+        },
+        {
+          "MethodName": "Update membership",
+          "Synopsis": "Updates a member permissions",
+          "HTTPMethod": "PUT",
+          "URI": "/share/{id}",
+          "RequiresOAuth": "Y",
+          "parameters": [
+            {
+              "Name": "id",
+              "Description": "ID of the shared item",
+              "Required": "Y",
+              "Type": "ObjectId"
+            },
+            {
+              "Name": "member",
+              "Description": "ID of the member to update",
+              "Required": "N",
+              "Type": "ObjectId"
+            },
+            {
+              "Name": "permissions",
+              "Description": "Permissions given to the member",
+              "Required": "Y",
+              "Type": "int: 0 (RO), 1 (RW)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "/link",
+      "methods": [
+        {
+          "MethodName": "Create a link",
+          "Synopsis": "Makes an item public",
+          "HTTPMethod": "POST",
+          "URI": "/link",
+          "RequiresOAuth": "Y",
+          "parameters": [
+            {
+              "Name": "id",
+              "Description": "ID of the item to make public",
+              "Required": "Y",
+              "Type": "ObjectId"
+            }
+          ]
+        },
+        {
+          "MethodName": "Get all links",
+          "Synopsis": "Returns all public items of authenticated user",
+          "HTTPMethod": "GET",
+          "URI": "/link",
+          "RequiresOAuth": "Y"
+        },
+        {
+          "MethodName": "Update link",
+          "Synopsis": "Invites more people to see this item",
+          "HTTPMethod": "PUT",
+          "URI": "/link",
+          "RequiresOAuth": "Y",
+          "parameters": [
+            {
+              "Name": "id",
+              "Description": "ID of the public item",
+              "Required": "Y",
+              "Type": "ObjectId"
+            },
+            {
+              "Name": "with",
+              "Description": "Email of people to invite ( Cubbyhole user or not )",
+              "Required": "Y",
+              "Type": "Array of people object [{email: string}]"
+            }
+          ]
+        },
+        {
+          "MethodName": "Delete link",
+          "Synopsis": "If requested by the owner it makes the item private, else it removes the membership",
+          "HTTPMethod": "DELETE",
+          "URI": "/link/{id}",
+          "RequiresOAuth": "Y",
+          "parameters": [
+            {
+              "Name": "id",
+              "Description": "ID of the public item",
+              "Required": "Y",
+              "Type": "ObjectId"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

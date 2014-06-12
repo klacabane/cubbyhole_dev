@@ -281,6 +281,7 @@ module.exports = function (app) {
 
             ishare.save(function (err) {
                 if (err) return res.send(500);
+
                 res.send(200);
             });
         });

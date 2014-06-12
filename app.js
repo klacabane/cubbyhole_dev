@@ -50,7 +50,9 @@ mongoose.connect(cfg.db.address, function (err) {
 		if (err) throw err;
 	});
 	*/
+
     cache.init();
+    cache.addDocumentation();
 
     // Create admin account if it doesnt exist
     User.findOne({email: 'cubbyholeadm@gmail.com'}, function (err, user) {

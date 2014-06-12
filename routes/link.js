@@ -9,8 +9,8 @@ module.exports = function (app) {
      *  POST
      *  Make the resource public
      */
-    app.post('/link/:id', mw.checkAuth, mw.validateId, function (req, res) {
-        var itemId = req.params.id;
+    app.post('/link/:id?', mw.checkAuth, mw.validateId, function (req, res) {
+        var itemId = req.params.id || req.body.id;
         Item.findOne({_id: itemId}, function (err, item) {
             if (err) return res.send(500);
             if (!item) return res.send(404);
@@ -65,8 +65,8 @@ module.exports = function (app) {
      *  PUT
      *  Invite more users to a link
      */
-    app.put('/link/:id', mw.validateId, function (req, res) {
-        var itemId = req.params.id,
+    app.put('/link/:id?', mw.validateId, function (req, res) {
+        var itemId = req.params.id || req.body.id,
             receivers = req.body.with || [];
         Item.findOne({_id: itemId}, function (err, item) {
             if (err) return res.send(500);
@@ -98,7 +98,7 @@ module.exports = function (app) {
                                     link: item.link.url
                                 };
                                 Utils.sendEmail(rec, details, function (err) {
-                                    // do we want to wait for that?
+                                    if (err) console.log(err);
                                 });
 
                                 if (!user ||
