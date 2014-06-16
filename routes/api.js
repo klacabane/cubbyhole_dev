@@ -16,8 +16,8 @@ module.exports = function (app) {
     require('../routes/link')(app);
     require('../routes/notification')(app);
 
-
-    var city = new geoip.City('./datas/GeoLiteCity.dat');
+    // GeoLiteCity.dat weighs a ton
+    // var city = new geoip.City('./datas/GeoLiteCity.dat');
     /**
      *  POST
      *  Signin
@@ -71,9 +71,10 @@ module.exports = function (app) {
 
         async.parallel({
             location: function (next) {
-                city.lookup(ip, function (err, locData) {
+                next();
+                /* city.lookup(ip, function (err, locData) {
                     next(null, locData);
-                });
+                }); */
             },
             emailTaken: function (next) {
                 User.findOne({email: email.toLowerCase().trim(), deleted: false}, next);
