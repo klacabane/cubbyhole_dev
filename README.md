@@ -66,3 +66,15 @@ Open config.js & replace line 3, 16, 19
 	webclient: {
         	address: "http://localhost:8000"
     	}
+
+with
+
+	address: "mongodb://localhost/Cubbyhole"
+
+	api: {
+        	address: "http://10.0.0.25:3000"
+    	}
+
+	webclient: {
+        	address: "http://10.0.0.20:8000"
+    	}
