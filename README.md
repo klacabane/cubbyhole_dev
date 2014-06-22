@@ -12,7 +12,7 @@ cubbyhole_dev
 
 3) For Windows: Download & install OpenSSL for Windows (NOT THE LIGHT VERSION!) (Ex: Win64 OpenSSL v1.0.1f) http://slproweb.com/products/Win32OpenSSL.html
 
-4) Install MongoDB. For CentOS:
+4) Install MongoDB. For CentOS (http://docs.mongodb.org/manual/tutorial/install-mongodb-on-red-hat-centos-or-fedora-linux/) :
 
 Create a /etc/yum.repos.d/mongodb.repo file to hold the following configuration information for the MongoDB repository:
 
