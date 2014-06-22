@@ -14,7 +14,21 @@ cubbyhole_dev
 
 4) Install MongoDB. For CentOS:
 
-	yum intall mongodb
+Create a /etc/yum.repos.d/mongodb.repo file to hold the following configuration information for the MongoDB repository:
+
+	[mongodb]
+	name=MongoDB Repository
+	baseurl=http://downloads-distro.mongodb.org/repo/redhat/os/x86_64/
+	gpgcheck=0
+	enabled=1
+	
+Install mongodb:
+
+	sudo yum install mongodb-org
+	
+	sudo chkconfig mongod on
+	
+	sudo service mongod restart
 
 5) Install NodeJS. For CentOS:
 
