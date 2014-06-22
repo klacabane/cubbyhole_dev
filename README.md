@@ -12,7 +12,15 @@ cubbyhole_dev
 
 3) For Windows: Download & install OpenSSL for Windows (NOT THE LIGHT VERSION!) (Ex: Win64 OpenSSL v1.0.1f) http://slproweb.com/products/Win32OpenSSL.html
 
-4) Git bash on the projet folder
+4) Install MongoDB. For CentOS:
+
+	yum intall mongodb
+
+5) Install NodeJS. For CentOS:
+
+	yum install nodejs
+
+6) Git bash on the projet folder
 
 	npm install
 
