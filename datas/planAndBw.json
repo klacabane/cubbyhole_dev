@@ -1,8 +1,8 @@
 {
 	"plans": [
-		{"name": "Free", "price": 0, "duration": 30, "storage": 100, "sharedQuota": 100, "isMutable": false},
-		{"name": "Pro", "price": 9.99, "duration": 60, "storage": 200, "sharedQuota": 200},
-		{"name": "Business", "price": 14.99, "duration": 90, "storage": 300, "sharedQuota": 300}
+		{"name": "Free", "price": 0, "duration": 30, "storage": 2000, "sharedQuota": 500, "isMutable": false},
+		{"name": "Pro", "price": 9.99, "duration": 30, "storage": 100000, "sharedQuota": 25000},
+		{"name": "Business", "price": 49.99, "duration": 30, "storage": 1000000, "sharedQuota": 250000}
 	],
 	"bandwidths": [
 		{"upload": 100, "download": 100},
